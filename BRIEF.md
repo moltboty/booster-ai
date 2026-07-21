@@ -33,11 +33,12 @@ Booster AI identifies client pain points and opportunities through consultation 
 - Language: English-first; structure and layout should remain Arabic/RTL-ready for a future localized version
 
 ## Assets
-No logo, photography, client marks, testimonials, contact email, booking link, or finalized Arabic copy were supplied. Use a typographic wordmark and an original CSS-based visual system. Any contact integration remains clearly marked as a launch dependency.
+No finalized logo, photography, client marks, testimonials, contact email, booking link, or finalized Arabic copy were supplied. Use a typographic wordmark, an original CSS/SVG motion system, and one clearly abstract build-time generated editorial illustration. Generated media must never imply real employees, clients, offices, workflows, or results. Any contact integration remains clearly marked as a launch dependency.
 
 ## Constraints
-- No API is required for the first local version
-- No image-generation API is configured; strong typography and CSS composition must carry the design
+- OpenRouter is available for optional build-time image/video exploration; its credential stays outside the project and never enters browser code
+- Use the cheapest viable model for drafts, record provenance/cost, and include only reviewed, optimized assets
+- Explanatory workflow motion should use CSS/SVG rather than generated video
 - Prefer the smallest suitable static stack
 - Respect reduced-motion preferences
 - Do not publish until the user explicitly approves publication

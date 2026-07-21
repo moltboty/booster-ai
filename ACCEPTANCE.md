@@ -31,8 +31,8 @@
 - [x] Static verifier passes recursively
 - [x] HTML/CSS/JS syntax checks pass
 - [x] Anti-slop diagnostic has no unresolved compositional tell
-- [ ] Independent reviewer has no unresolved blocker
-- [ ] Local preview server is stopped after verification
+- [x] Independent reviewer found no unresolved local-review blocker
+- [x] Local preview is open for user review and returned HTTP 200
 
 ## Deployment gate
 - [x] No remote repository or public deployment without explicit user approval

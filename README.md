@@ -15,6 +15,7 @@ Open `http://127.0.0.1:4173/`.
 - `index.html` — complete semantic landing page
 - `styles.css` — responsive visual system and local fonts
 - `app.js` — mobile navigation, motion enhancement, and opportunity-scan interaction
+- `assets/images/` — reviewed generated hero artwork, optimized formats, and provenance notes
 - `assets/fonts/` — self-hosted production fonts and their SIL Open Font License files
 - `BRIEF.md` — factual product brief and assumptions
 - `RESEARCH.md` — live competitor/reference research
@@ -25,6 +26,10 @@ Open `http://127.0.0.1:4173/`.
 ## Current launch dependency
 
 Booking/contact details are intentionally not invented. Before public launch, replace the explanatory note in the final CTA with the confirmed booking link, email address, or form endpoint.
+
+## Redesign branch
+
+The original validated version remains on `main`. The softer, modular redesign is developed on `redesign/softer-modular-v2`.
 
 ## Deployment
 

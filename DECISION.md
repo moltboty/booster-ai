@@ -1,57 +1,58 @@
-# Booster AI — Design and Technology Decision
+# Booster AI Design and Technology Decision
 
-## Chosen approach in plain language
+## Decision status
+Selected redesign direction: **Operational Warmth** — a softer, modular evolution of the original Operational Scan concept.
 
-- **Visual direction:** Operational Scan
-- **Surface:** Decide/Learn landing page
-- **Brand posture:** incisive, energetic and practical—warm off-white paper, deep green-black ink, high-visibility orange as the single signal color
-- **Core metaphor:** operational friction becomes visible, is diagnosed, and is converted into a controlled AI-assisted flow
-- **Why it fits:** Booster AI begins with discovery rather than selling a generic platform. The page itself should feel like an assessment, not an AI product template.
+## Surface
+Primary surface: **Decide / Learn**. The visitor must understand the offer, see how Booster works, and prepare one credible discovery conversation. The page is not a product dashboard, so visual storytelling and one idea per section take priority over dense system chrome.
 
-## Implementation
+## Why the original direction changed
+The first version was coherent and technically strong, but it applied the engineering/editorial grammar too uniformly: hard rectangles, rules, mono labels, abrupt color fields, and diagram-like content in almost every section. It communicated rigor but not enough warmth, partnership, visual depth, or modularity.
 
-- **Stack:** semantic HTML, modular CSS, and minimal vanilla JavaScript
-- **Page model:** focused one-page marketing site
-- **Hosting target:** local preview now; GitHub Pages only after explicit approval
-- **Why:** no authentication, database, CMS, or complex application state is required. Static output is faster, easier to maintain, accessible, and ideal for GitHub Pages.
+The redesign keeps the distinctive green, cream, and orange identity, strong headline, workflow-first positioning, human-control message, 30% ambition, and opportunity scan. It softens the shape language, reduces repeated copy, varies section rhythm, and turns repeatable content into independent cards with optional detail.
+
+## Visual system
+- Warm cream canvas with deep forest green, restrained orange, clay, blush, and sage supporting tones.
+- Large soft radii with occasional asymmetric image framing; pills only for compact actions and metadata.
+- Subtle shadows, layering, and tactile surfaces instead of full outlines everywhere.
+- Space Grotesk for display, Source Sans 3 for readable body copy, and IBM Plex Mono used sparingly for operational metadata.
+- One reviewed abstract generated illustration as atmosphere and brand texture—not as documentary evidence.
+- Varied compositions: hero image scene, audience strip, expandable process cards, bento solution cards, qualified ambition panel, human-control path, assessment tool, and contained final CTA.
+
+## Modularity
+- The four process stages are independent native `<details>` cards.
+- The four capability modules are independent articles with optional expandable detail.
+- Cards can be added, removed, reordered, or hidden without redesigning adjacent copy.
+- Dense explanations remain behind progressive disclosure, while the first scan layer stays short.
+- The page deliberately does not turn every section into a card grid.
 
 ## Motion posture
+- CSS/SVG-style motion explains flow and human checkpoints: moving signals, path activation, card state, and restrained reveal transitions.
+- Generated video is rejected for this iteration because it adds less explanatory value than editable CSS motion and carries performance/accessibility costs.
+- All nonessential motion stops under `prefers-reduced-motion`.
+- Content remains visible when JavaScript or observers fail.
 
-- Motion explains state: a restrained scan line, workflow path activation and staggered reveal
-- CSS-first; JavaScript only for navigation, diagnostic selection, dialog/copy behavior, and viewport-aware enhancement
-- `prefers-reduced-motion` removes continuous and scroll-triggered motion
-- No looping video, 3D scene, animation library or framework
+## Generated asset decision
+- Four cheap concepts were generated with `black-forest-labs/flux.2-klein-4b` through OpenRouter at USD 0.014 each.
+- The selected operational-river direction best provided smoothness, warmth, regional landscape resonance, and visual continuity without generic AI imagery.
+- Production asset cost: USD 0.014 for the selected source image.
+- The asset is saved locally in optimized WebP with JPEG fallback and documented in `assets/images/GENERATED_ASSETS.md`.
+- No API key or runtime generation exists in the frontend.
 
-## Connections
+## Technology
+Semantic HTML, CSS, and minimal JavaScript remain the smallest suitable stack.
 
-| Requirement | Connection | Where | Secret/fallback |
-|---|---|---|---|
-| Competitor research | Hermes browser | Research phase only | Completed without API credentials |
-| Contact/booking | Not configured | Final CTA prepares/copies an opportunity brief locally | Honest launch dependency; no fake submission |
-| Custom imagery | None | CSS/type-based composition | Site does not depend on image-generation credentials |
-| GitHub/hosting | GitHub API + Actions + Pages | Only after user approves publication | No remote action in local phase |
-
-## Decision score
-
-| Criterion | Weight | Static site | Astro | React/Vite |
-|---|---:|---:|---:|---:|
-| Business and audience fit | 25 | 25 | 23 | 21 |
-| Content and SEO fit | 20 | 19 | 20 | 16 |
-| Interaction complexity fit | 15 | 15 | 14 | 12 |
-| Performance/accessibility | 15 | 15 | 14 | 11 |
-| Maintainability | 15 | 15 | 13 | 10 |
-| Hosting/deployment fit | 10 | 10 | 9 | 8 |
-| **Total** | **100** | **99** | **93** | **78** |
+Reasons:
+- The redesign needs content, responsive layout, native disclosure, lightweight state, and CSS motion—not a client framework.
+- Static output is fast, easy to preview, and suitable for GitHub Pages if publication is later approved.
+- No build process or dependency is needed for the current local prototype.
 
 ## Rejected alternatives
+- **Keep the original sharp scan interface:** distinctive but too cold and repetitive.
+- **Generic rounded SaaS card grid:** softer but would erase Booster's operational character.
+- **Cinematic AI video hero:** expensive relative to value, less controllable, and harder to make accessible and performant.
+- **Fake product dashboard or client proof:** would imply capabilities or evidence that have not been supplied.
+- **React/Vite redesign:** unnecessary for the current interaction level.
 
-| Alternative | Why rejected now | When appropriate |
-|---|---|---|
-| Astro | Adds build tooling without enough multi-page content benefit | When the site adds insights, case studies, Arabic routes or a content library |
-| React/Vite | Framework overhead for simple progressive interactions | When Booster develops an authenticated assessment or client portal |
-| Next.js/full-stack | No database, auth, payment or server API requirement | When booking, accounts, assessments or secure client data require a backend |
-| Dark neon AI identity | Too close to current AI-category conventions and regional competitors | Only for a future product console, not the consultancy front door |
-
-## User-facing summary
-
-Booster AI will use a fast static site with a distinctive operational-diagnostic design. It will feel premium and interactive without needing a framework or API, and it can move cleanly to GitHub Pages after approval.
+## Launch dependencies
+The local redesign can be reviewed now. Public launch remains blocked until a confirmed booking URL, contact email, or real form endpoint is supplied and tested.

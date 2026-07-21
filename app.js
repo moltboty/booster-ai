@@ -31,7 +31,7 @@
 
     navigation.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => closeMenu(false)));
     window.addEventListener('resize', () => {
-      if (window.innerWidth > 860) closeMenu(false);
+      if (window.innerWidth > 900) closeMenu(false);
     });
 
     document.addEventListener('keydown', (event) => {
