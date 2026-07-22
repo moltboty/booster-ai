@@ -25,7 +25,7 @@
     </button>
     <nav id="site-nav" class="site-nav" aria-label="Primary navigation">
       <a href="#method">How it works</a>
-      <a href="#solutions">What we build</a>
+      <a href="#solutions">What we deliver</a>
       <a href="#assessment">Opportunity scan</a>
       <a class="nav-cta" href="#assessment">Bring one workflow <span aria-hidden="true">↗</span></a>
     </nav>
@@ -49,25 +49,36 @@
       </div>
 
       <div class="hero-visual reveal">
-        <div class="visual-halo" aria-hidden="true"></div>
-        <figure class="visual-frame">
-          <picture>
-            <source srcset="assets/images/operational-river.webp" type="image/webp">
-            <img src="assets/images/operational-river.jpg" width="1024" height="1024" alt="Abstract warm-toned illustration of several paths converging into an organized green channel.">
-          </picture>
-        </figure>
-        <div class="visual-note visual-note-top">
-          <span class="live-dot" aria-hidden="true"></span>
-          <span>One workflow in focus</span>
-        </div>
-        <div class="visual-note visual-note-bottom">
-          <span>Scattered steps</span>
-          <div class="mini-flow" aria-hidden="true"><i></i><i></i><i></i><b></b></div>
-          <strong>Clear, assisted flow</strong>
-        </div>
-        <div class="human-checkpoint">
-          <span aria-hidden="true">✓</span>
-          <p><small>Human checkpoint</small>Judgment stays with your team.</p>
+        <div class="workflow-board">
+          <div class="workflow-board-head">
+            <span><i aria-hidden="true"></i> One workflow. One clear path.</span>
+            <small>From evidence to improvement</small>
+          </div>
+          <div class="workflow-stages">
+            <div class="workflow-stage">
+              <span>01 · Listen</span>
+              <strong>Workflow evidence</strong>
+              <p>People · steps · systems</p>
+            </div>
+            <i class="workflow-arrow" aria-hidden="true"></i>
+            <div class="workflow-stage">
+              <span>02 · Prioritize</span>
+              <strong>Best opportunity</strong>
+              <p>Value · readiness · risk</p>
+            </div>
+            <i class="workflow-arrow" aria-hidden="true"></i>
+            <div class="workflow-stage workflow-stage-focus">
+              <span>03 · Build</span>
+              <strong>Useful AI</strong>
+              <div class="workflow-review-flow"><em>AI prepares</em><i>→</i><em>Human reviews</em><i>→</i><em>Action</em></div>
+            </div>
+            <i class="workflow-arrow" aria-hidden="true"></i>
+            <div class="workflow-stage">
+              <span>04 · Improve</span>
+              <strong>Measured change</strong>
+              <p>Review · adopt · refine</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -92,7 +103,7 @@
       </div>
 
       <div class="process-grid">
-        <details class="process-card reveal" name="booster-process" open>
+        <details class="process-card reveal" name="booster-process">
           <summary>
             <span class="step-no">01</span>
             <h3>Listen to the people doing the work</h3>
@@ -142,7 +153,7 @@
     <section class="solutions section-shell" id="solutions" aria-labelledby="solutions-title">
       <div class="section-heading reveal">
         <div>
-          <p class="section-kicker">What we build</p>
+          <p class="section-kicker">What we deliver</p>
           <h2 id="solutions-title">Useful capability,<br>not AI theatre.</h2>
         </div>
         <p>Every engagement can start small. These modules can be added, removed, or combined as the opportunity becomes clearer.</p>
@@ -151,7 +162,11 @@
       <div class="solution-grid">
         <article class="solution-card solution-card-map reveal">
           <div class="card-topline"><span>Diagnose</span><i aria-hidden="true">01</i></div>
-          <div class="map-visual" aria-hidden="true"><span></span><span></span><span></span><b></b></div>
+          <div class="service-diagram diagram-map" aria-hidden="true">
+            <span><small>Input</small><b>Evidence</b></span><i></i>
+            <span><small>Assess</small><b>Score</b></span><i></i>
+            <span class="diagram-result"><small>Output</small><b>Roadmap</b></span>
+          </div>
           <h3>AI opportunity mapping</h3>
           <p>Turn interviews and workflow evidence into a practical, prioritized roadmap.</p>
           <details>
@@ -162,7 +177,12 @@
 
         <article class="solution-card solution-card-agent reveal">
           <div class="card-topline"><span>Build</span><i aria-hidden="true">02</i></div>
-          <div class="agent-visual" aria-hidden="true"><span>Prepare</span><i></i><span>Review</span><i></i><span>Act</span></div>
+          <div class="service-diagram diagram-agent" aria-hidden="true">
+            <span><small>01</small><b>Context</b></span><i></i>
+            <span><small>02</small><b>AI prepares</b></span><i></i>
+            <span class="diagram-review"><small>03</small><b>Human review</b></span><i></i>
+            <span><small>04</small><b>Action</b></span>
+          </div>
           <h3>AI agents for real work</h3>
           <p>Task-focused agents that prepare information, coordinate steps, and keep a human review point.</p>
           <details>
@@ -173,9 +193,14 @@
 
         <article class="solution-card solution-card-connect reveal">
           <div class="card-topline"><span>Connect</span><i aria-hidden="true">03</i></div>
+          <div class="service-diagram diagram-connect" aria-hidden="true">
+            <span><small>01</small><b>Trigger</b></span><i></i>
+            <span><small>02</small><b>Connected flow</b></span><i></i>
+            <span class="diagram-review"><small>03</small><b>Approval</b></span><i></i>
+            <span class="diagram-result"><small>04</small><b>Complete</b></span>
+          </div>
           <h3>Workflow automation</h3>
           <p>Connect the tools the team already uses and remove avoidable repetition between them.</p>
-          <div class="connect-visual" aria-hidden="true"><span></span><span></span><span></span><i></i></div>
           <details>
             <summary>What it can include</summary>
             <p>APIs, event-based automation, approvals, notifications, reporting flows, and safer handoffs.</p>
@@ -184,7 +209,12 @@
 
         <article class="solution-card solution-card-adopt reveal">
           <div class="card-topline"><span>Adopt</span><i aria-hidden="true">04</i></div>
-          <blockquote>“The new flow should feel like a better way to work—not another tool to maintain.”</blockquote>
+          <div class="service-diagram diagram-adopt" aria-hidden="true">
+            <span><small>01</small><b>Train</b></span><i></i>
+            <span><small>02</small><b>Use</b></span><i></i>
+            <span><small>03</small><b>Measure</b></span><i></i>
+            <span class="diagram-result"><small>04</small><b>Improve</b></span>
+          </div>
           <h3>Enablement and improvement</h3>
           <p>Training, responsible-use practices, and measurement that help the capability stay useful.</p>
           <details>

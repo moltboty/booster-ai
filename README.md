@@ -27,10 +27,8 @@ Open `http://127.0.0.1:4173/`.
 
 Booking/contact details are intentionally not invented. Before public launch, replace the explanatory note in the final CTA with the confirmed booking link, email address, or form endpoint.
 
-## Redesign branch
-
-The original validated version remains on `main`. The softer, modular redesign is developed on `redesign/softer-modular-v2`.
-
 ## Deployment
 
-The static site is GitHub Pages-safe. No public repository or deployment is created until the user explicitly approves publication.
+Live site: **https://moltboty.github.io/booster-ai/**
+
+The site is deployed from the repository's `main` branch through GitHub Pages.
