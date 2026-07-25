@@ -33,4 +33,8 @@ The four-field form currently transmits no data. Its bilingual success state rem
 
 ## Deployment
 
-This repository contains the website source only. GitHub Pages is intentionally disabled. Hosting, domain configuration, and the production contact endpoint will be completed separately before public launch.
+GitHub Pages publishes the current `main` branch from the repository root at:
+
+https://moltboty.github.io/booster-ai/
+
+Custom-domain hosting and the production contact endpoint will be completed separately before the final public launch.
