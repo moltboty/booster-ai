@@ -25,7 +25,7 @@
     </button>
     <nav class="site-nav" id="site-nav" aria-label="التنقل الرئيسي" data-i18n-attr="aria-label:a11y.mainNav">
       <a href="#approach" data-i18n="nav.approach">منهجيتنا</a>
-      <a href="#workflow" data-i18n="nav.how">كيف نعمل</a>
+
       <button class="language-toggle" type="button" data-language-toggle aria-label="Switch to English">English</button>
       <a class="nav-cta" href="contact.html"><span></span> <span data-i18n="nav.start">ابدأ محادثة</span> </a>
     </nav>
@@ -230,70 +230,6 @@
             </svg>
           </div>
         </article>
-      </div>
-    </section>
-
-    <section class="workflow" id="workflow" aria-labelledby="workflow-title">
-      <h2 class="sr-only" id="workflow-title" data-i18n="home.workflowA11yTitle">سير العمل التوضيحي</h2>
-      <div class="workflow-inner section-shell">
-        <div class="workflow-canvas" role="group" aria-label="سير عمل توضيحي يبدأ بالإشارات التشغيلية ويمر بالتشخيص والتنفيذ المترابط والمراجعة البشرية وصولا إلى تحسين قابل للقياس" data-i18n-attr="aria-label:home.workflowVisualLabel">
-          <svg class="workflow-detail" viewBox="0 0 840 500" role="img" aria-labelledby="workflow-svg-title workflow-svg-desc">
-            <title id="workflow-svg-title" data-i18n="home.workflowSvgTitle">سير عمل Booster AI</title>
-            <desc id="workflow-svg-desc" data-i18n="home.workflowSvgDesc">تتجمع الإشارات التشغيلية في هدف واضح، ثم تنتقل عبر مكونات تنفيذ مترابطة بموافقة بشرية، لتنتج تحسنا قابلا للقياس.</desc>
-            <defs><linearGradient id="workflow-value-fill" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#10c99a" stop-opacity="0"/><stop offset="1" stop-color="#10c99a" stop-opacity=".18"/></linearGradient></defs>
-            <g class="workflow-signals">
-              <circle cx="42" cy="108" r="5"/><circle cx="70" cy="82" r="4"/><circle cx="98" cy="116" r="6"/><circle cx="126" cy="92" r="4"/>
-              <circle cx="50" cy="155" r="4"/><circle cx="82" cy="166" r="5"/><circle cx="116" cy="148" r="4"/><circle cx="138" cy="181" r="5"/>
-              <circle cx="60" cy="212" r="6"/><circle cx="94" cy="228" r="4"/><circle cx="128" cy="216" r="5"/>
-            </g>
-            <g class="workflow-converge">
-              <path d="M98 116C142 116 145 145 181 148"/><path d="M126 92C150 92 155 138 181 142"/><path d="M116 148C146 148 151 152 181 153"/><path d="M138 181C158 181 160 160 181 158"/><path d="M128 216C160 216 160 170 181 164"/>
-              <ellipse cx="198" cy="153" rx="17" ry="76"/><path d="M215 153h31"/><path class="workflow-accent" d="M236 145l11 8-11 8"/>
-            </g>
-            <g class="workflow-target">
-              <circle cx="284" cy="153" r="43"/><circle cx="284" cy="153" r="28"/><circle cx="284" cy="153" r="12"/><circle class="workflow-core" cx="284" cy="153" r="6"/>
-              <text x="284" y="221" text-anchor="middle" data-i18n="visual.clarity">الوضوح</text>
-            </g>
-            <path class="workflow-main-route" d="M327 153H366"/>
-            <g class="workflow-build-system">
-              <g transform="translate(366 108)"><rect width="88" height="94" rx="14"/><path d="M16 23h56M16 39h34"/><path class="workflow-accent" d="M16 70h12l6-14 10 24 9-16h18"/></g>
-              <g transform="translate(472 94)"><rect width="104" height="114" rx="16"/><rect class="workflow-mini" x="42" y="19" width="21" height="17" rx="3"/><path class="workflow-accent" d="M52 36v17M18 53h68M18 53v21M52 53v21M86 53v21"/><rect class="workflow-mini" x="9" y="74" width="20" height="18" rx="3"/><rect class="workflow-mini" x="42" y="74" width="20" height="18" rx="3"/><rect class="workflow-mini" x="76" y="74" width="20" height="18" rx="3"/></g>
-              <g transform="translate(594 108)"><rect width="88" height="94" rx="14"/><circle class="workflow-accent" cx="44" cy="34" r="14"/><path class="workflow-accent" d="M44 24v20M34 34h20"/><path d="M17 66h54M17 79h37"/></g>
-              <path class="workflow-system-route" d="M454 155h18M576 155h18"/>
-              <text x="524" y="235" text-anchor="middle" data-i18n="visual.connectedDelivery">تنفيذ مترابط</text>
-            </g>
-            <g class="workflow-review-detail">
-              <path d="M418 108V61h212v47"/><circle cx="524" cy="61" r="19"/><path class="workflow-accent" d="M515 61l6 6 13-15"/><text x="524" y="28" text-anchor="middle" data-i18n="visual.humanCheckpoint">مراجعة بشرية</text>
-            </g>
-            <path class="workflow-main-route" d="M682 155c55 0 64 40 64 90"/>
-            <g class="workflow-value-chart">
-              <path class="workflow-value-area" d="M356 438C450 432 526 416 598 382S706 315 786 261V450H356Z" fill="url(#workflow-value-fill)"/>
-              <path class="workflow-value-line" d="M356 438C450 432 526 416 598 382S706 315 786 261"/><path class="workflow-value-line" d="M770 257l16 4-7 15"/>
-              <g><circle cx="444" cy="427" r="7"/><path d="M444 420v-30"/><circle class="workflow-checkpoint" cx="444" cy="378" r="15"/><path class="workflow-accent" d="M444 370v9l6 4"/></g>
-              <g><circle cx="598" cy="382" r="7"/><path d="M598 375v-37"/><circle class="workflow-checkpoint" cx="598" cy="325" r="15"/><path class="workflow-accent" d="M590 332v-7M598 332v-13M606 332v-20"/></g>
-              <g><circle cx="714" cy="310" r="7"/><path d="M714 303v-35"/><circle class="workflow-checkpoint" cx="714" cy="255" r="15"/><path class="workflow-accent" d="M706 255l5 5 11-13"/></g>
-              <text x="570" y="482" text-anchor="middle" data-i18n="visual.measuredImprovement">تحسين قابل للقياس</text>
-            </g>
-          </svg>
-          <div class="workflow-mobile" aria-hidden="true">
-            <div class="mobile-stage mobile-stage-diagnose">
-              <div class="mobile-cluster"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-              <div class="mobile-funnel"></div><div class="mobile-target"><i></i></div>
-              <strong data-i18n="visual.signalsBecomeClarity">الإشارات تصبح وضوحا</strong>
-            </div>
-            <i class="mobile-route"></i>
-            <div class="mobile-stage mobile-stage-build">
-              <div class="mobile-approval">✓</div>
-              <div class="mobile-build-cards"><i></i><i></i><i></i><i></i></div>
-              <strong data-i18n="visual.connectedDelivery">تنفيذ مترابط</strong><span data-i18n="visual.humanBuiltIn">قرارات بشرية مدمجة</span>
-            </div>
-            <i class="mobile-route mobile-route-boost"></i>
-            <div class="mobile-stage mobile-stage-boost">
-              <div class="mobile-curve"><i></i><i></i><i></i></div>
-              <strong data-i18n="visual.measuredImprovement">تحسين قابل للقياس</strong><span data-i18n="visual.timeEfficiencyValue">الوقت والكفاءة والقيمة</span>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
 
