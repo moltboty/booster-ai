@@ -1,40 +1,29 @@
 # Booster AI Website
 
-A premium Arabic-first bilingual website for Booster AI, focused on the **Diagnose, Build, Boost** approach.
+Arabic-first static website with an English language switch. Existing approved copy is preserved.
 
-## Preview locally
+## Preview
 
-```bash
-python3 -m http.server 4173
-```
+Run `python3 -m http.server 4185 --bind 127.0.0.1` and visit http://127.0.0.1:4185/.
 
-Open `http://localhost:4173/`.
+## Review changes
 
-## Pages
+- Native, user-initiated video player on the homepage, with a lightweight poster and optional English captions.
+- Calmer brand surfaces, fewer decorative elements, and clearer spacing.
+- Removed repeated vendor marquees; no implied vendor partnerships.
+- Improved keyboard focus, mobile language switching, Escape handling and anchor offsets.
+- Canonical and social sharing metadata for the existing GitHub Pages address.
 
-- `index.html`: homepage, three-stage approach, explanatory workflow, ecosystem banners, and CTA
-- `contact.html`: simplified four-field contact form with a staged bilingual success state
+## Contact
 
-## Project structure
+Contact delivery is deferred by the owner until domain setup. The existing form is retained with an upfront unavailable notice and disabled submit button. It sends no data. Do not enable it or show success until a verified contact route is connected and tested.
 
-- `styles.css`: responsive visual system, dotted canvas, Arabic and English typography, RTL/LTR layouts, diagrams, and reduced-motion behavior
-- `app.js`: Arabic-default localization, language persistence, navigation, sticky header, and privacy-preserving local form behavior
-- `assets/brand/`: Booster AI brand assets
-- `assets/logos/`: ecosystem marks and their source/license notes
-- `assets/fonts/`: self-hosted English and Arabic fonts with license files
+## Video
 
-## Languages
+`assets/video/booster-story.mp4` is the owner-approved corrected cut. It is an illustrative story, not a customer testimonial. The supplied Pika watermark remains. Playback is not automatic; preload is disabled. English captions are optional because the source already contains English text. The visible labels and story summary were removed at the owner’s request.
 
-Arabic is the source-visible default with `lang="ar"` and `dir="rtl"`. The visible language switch provides a complete English experience, updates metadata and direction, and remembers the visitor's preference locally.
+## Hosting
 
-## Contact form
+Existing GitHub Pages deployment: https://moltboty.github.io/booster-ai/
 
-The four-field form currently transmits no data. Its bilingual success state remains hidden until a real endpoint confirms receipt. Before public launch, connect and test a verified form endpoint, show success only after a successful response, and add privacy wording for the real data path.
-
-## Deployment
-
-GitHub Pages publishes the current `main` branch from the repository root at:
-
-https://moltboty.github.io/booster-ai/
-
-Custom-domain hosting and the production contact endpoint will be completed separately before the final public launch.
+This review does not change hosting providers or configure a custom domain. Publishing requires merging the reviewed changes into the deployed branch.

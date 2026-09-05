@@ -1,4 +1,5 @@
 (() => {
+  document.documentElement.classList.add("js");
   const translations = {
     ar: {
       'a11y.skip': 'انتقل إلى المحتوى',
@@ -45,7 +46,21 @@
       'contact.localOnly': 'النموذج غير متصل بوسيلة إرسال بعد.',
       'contact.successTitle': 'شكرا لتواصلك معنا.',
       'contact.successBody': 'سوف يتم التواصل معك في أقرب وقت.',
-      'footer.tagline': 'نشخص. نبني. نعزز.'
+      'footer.tagline': 'نشخص. نبني. نعزز.',
+      'home.videoLabel': 'قصة توضيحية عن BoosterAI',
+      'home.download': 'تنزيل الفيديو',
+      'home.watch': 'شاهد القصة',
+      'home.storyLabel': 'سيناريو توضيحي · ٣٩ ثانية · تعليق إنجليزي',
+      'home.transcript': 'ملخص القصة',
+      'home.storyText': 'صاحب عمل يواجه ضغط المهام وبطء النمو. يتواصل مع BoosterAI لفهم أين يضيع الوقت. نؤتمت الأعمال المتكررة ونبني مساعدًا يتابع المنافسين. تساعده النتائج على تحسين خدماته وتسويقه، مع بقاء القرار بيده. ومع الوقت، ينمو الإيراد ويتفرغ للخطوة التالية. قصة توضيحية وليست شهادة عميل أو ضمانًا للنتائج.',
+      'offer.team': 'تمكين فريقك',
+      'offer.teamBody': 'تدريب عملي يساعد فريقك على استخدام الذكاء الاصطناعي في مهامه اليومية.',
+      'offer.agent': 'مساعدون متخصصون',
+      'offer.agentBody': 'مساعدون لمهام محددة، من متابعة المنافسين إلى دعم التسويق والعمليات.',
+      'offer.workflow': 'أتمتة سير العمل',
+      'offer.workflowBody': 'نربط خطوات العمل المتكررة بأدواتك، مع مراجعة الفريق في القرارات المهمة.',
+      'stage.boostOutput': 'متابعة مستمرة وتحسينات مبنية على النتائج.'
+
     },
     en: {
       'a11y.skip': 'Skip to content',
@@ -92,7 +107,21 @@
       'contact.localOnly': 'This form is not connected to a delivery service yet.',
       'contact.successTitle': 'Thank you for contacting us.',
       'contact.successBody': 'We will contact you as soon as possible.',
-      'footer.tagline': 'Diagnose. Build. Boost.'
+      'footer.tagline': 'Diagnose. Build. Boost.',
+      'home.videoLabel': 'BoosterAI illustrative business story',
+      'home.download': 'Download video',
+      'home.watch': 'Watch the story',
+      'home.storyLabel': 'Illustrative scenario · 39 seconds · English narration',
+      'home.transcript': 'Read the story summary',
+      'home.storyText': 'An owner faces mounting work and slow growth. He contacts BoosterAI to find where time is being lost. Routine work is automated and an assistant monitors competitors. Those insights inform better services and marketing, with the owner in control. Over time, revenue grows and he can focus on what comes next. This is an illustrative story, not a customer testimonial or a guarantee of results.',
+      'offer.team': 'Equip your team',
+      'offer.teamBody': 'Practical guidance to help your team use AI in everyday work.',
+      'offer.agent': 'Specialist assistants',
+      'offer.agentBody': 'Assistants for focused tasks, from competitor monitoring to marketing and operations.',
+      'offer.workflow': 'Workflow automation',
+      'offer.workflowBody': 'Connect repetitive steps across your tools, with your team reviewing important decisions.',
+      'stage.boostOutput': 'Ongoing support and improvements informed by results.'
+
     }
   };
 
@@ -138,6 +167,7 @@
     document.querySelectorAll('[data-language-toggle]').forEach((button) => {
       const nextLanguage = currentLanguage === 'ar' ? 'English' : 'العربية';
       button.textContent = nextLanguage;
+      button.lang = currentLanguage === 'ar' ? 'en' : 'ar';
       button.setAttribute('aria-label', currentLanguage === 'ar' ? 'Switch to English' : 'التبديل إلى العربية');
     });
 
@@ -159,7 +189,7 @@
     }
 
     if (formStatus) formStatus.textContent = '';
-    setMenu(false);
+    setMenu(menuButton?.getAttribute('aria-expanded') === 'true');
     if (persist) {
       try { localStorage.setItem('booster-language', currentLanguage); } catch (_) { /* Storage is optional. */ }
     }
@@ -178,7 +208,7 @@
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
+    if (event.key === 'Escape' && menuButton?.getAttribute('aria-expanded') === 'true') {
       setMenu(false);
       menuButton?.focus();
     }
