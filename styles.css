@@ -217,7 +217,7 @@ html[dir="rtl"] .contact-hero h1,html[dir="rtl"] .contact-hero>p{text-align:righ
 }
 
 /* Premium review: quieter surfaces, readable hierarchy, native media. */
-:root{--muted:#535e6c;--dot-canvas-light:none;--dot-canvas-dark:none;--shadow:0 12px 36px rgba(7,23,71,.08)}
+:root{--muted:#535e6c;--shadow:0 12px 36px rgba(7,23,71,.08)}
 html{scroll-padding-top:110px}section[id],main[id],#story{scroll-margin-top:110px}
 :focus-visible{outline:3px solid #007060;outline-offset:5px}.hero :focus-visible,.site-header :focus-visible{outline-color:#c9f7e8}
 .hero{min-height:auto;padding-top:170px;padding-bottom:90px}.hero::before{display:none}.hero-grid{min-height:440px;gap:5vw;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr)}
