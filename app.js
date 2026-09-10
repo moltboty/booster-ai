@@ -1,5 +1,5 @@
 (() => {
-  document.documentElement.classList.add("js");
+  document.documentElement.classList.add("js");   document.addEventListener("click", (e) => {     const openBtn = e.target.closest("[data-voice-demo-open]");     if (!openBtn) return;     const widgetBtn = document.getElementById("voice-demo-btn");     if (widgetBtn) {       widgetBtn.focus();       widgetBtn.scrollIntoView({ behavior: "smooth", block: "nearest" });       widgetBtn.click();     }   });
   const translations = {
     ar: {
       'a11y.skip': 'انتقل إلى المحتوى',
