@@ -101,7 +101,7 @@
   async function loadShowcase() {
     if (showcase) return showcase;
     try {
-      const res = await fetch("/assets/talk/showcase.json", { cache: "force-cache" });
+      const res = await fetch("/assets/talk/showcase.json", { cache: "no-cache" });
       if (!res.ok) return null;
       showcase = await res.json();
       return showcase;
@@ -118,7 +118,7 @@
       pack.clips.map(async (clip) => {
         if (decodedCache.has(clip.id)) return;
         try {
-          const res = await fetch("/" + clip.audio.replace(/^\//, ""), { cache: "force-cache" });
+          const res = await fetch("/" + clip.audio.replace(/^\//, "") + "?v=flat1", { cache: "no-cache" });
           if (!res.ok) return;
           const ab = await res.arrayBuffer();
           const buf = await ctx.decodeAudioData(ab.slice(0));
@@ -179,7 +179,7 @@
   async function playShowcaseClip(clip) {
     let buf = decodedCache.get(clip.id);
     if (!buf) {
-      const res = await fetch("/" + clip.audio.replace(/^\//, ""), { cache: "force-cache" });
+      const res = await fetch("/" + clip.audio.replace(/^\//, "") + "?v=flat1", { cache: "no-cache" });
       if (!res.ok) throw new Error("showcase audio missing");
       const ctx = await ensureAudioCtx();
       buf = await ctx.decodeAudioData((await res.arrayBuffer()).slice(0));
