@@ -166,18 +166,8 @@
       const src = ctx.createBufferSource();
       activeSource = src;
       src.buffer = buffer;
-      const gain = ctx.createGain();
-      // Consistent loudness from the first phoneme (showcase WAVs are already loudnorm'd).
-      gain.gain.value = 1.35;
-      const comp = ctx.createDynamicsCompressor();
-      comp.threshold.value = -18;
-      comp.knee.value = 12;
-      comp.ratio.value = 3;
-      comp.attack.value = 0.003;
-      comp.release.value = 0.18;
-      src.connect(gain);
-      gain.connect(comp);
-      comp.connect(ctx.destination);
+      // Direct playback — no gain/compressor (those clipped and made voice harsh).
+      src.connect(ctx.destination);
       src.onended = () => {
         if (activeSource === src) activeSource = null;
         resolve();
