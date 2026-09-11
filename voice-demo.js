@@ -51,7 +51,7 @@
         status,
         btn,
         el("p", { className: "voice-demo-note" }, [
-          "وضع العرض: إجابات فورية للأسئلة الشائعة · صوت فقط",
+          "وضع العرض: أسئلة محددة بصوت فوري ومتوازن · صوت فقط",
         ]),
       ])
     );
@@ -128,15 +128,35 @@
     );
   }
 
+  function normalizeSaid(said) {
+    return String(said || "")
+      .toLowerCase()
+      .replace(/[أإآ]/g, "ا")
+      .replace(/ة/g, "ه")
+      .replace(/ى/g, "ي")
+      .replace(/[ًٌٍَُِّْ]/g, "")
+      .replace(/[?!؟.,،:;]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   function matchShowcase(said) {
     if (!showcase || !showcase.clips) return null;
-    const t = said.toLowerCase();
+    const t = normalizeSaid(said);
     for (const clip of showcase.clips) {
-      if ((clip.triggers || []).some((k) => t.includes(String(k).toLowerCase()))) {
+      const triggers = clip.triggers || [];
+      if (!triggers.length) continue;
+      if (triggers.some((k) => t.includes(normalizeSaid(k)))) {
         return clip;
       }
     }
     return null;
+  }
+
+  function getCtaClip() {
+    if (!showcase || !showcase.clips) return null;
+    const id = showcase.cta_clip_id || "fallback_cta";
+    return showcase.clips.find((c) => c.id === id) || null;
   }
 
   async function playBuffer(buffer) {
@@ -146,7 +166,18 @@
       const src = ctx.createBufferSource();
       activeSource = src;
       src.buffer = buffer;
-      src.connect(ctx.destination);
+      const gain = ctx.createGain();
+      // Consistent loudness from the first phoneme (showcase WAVs are already loudnorm'd).
+      gain.gain.value = 1.35;
+      const comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -18;
+      comp.knee.value = 12;
+      comp.ratio.value = 3;
+      comp.attack.value = 0.003;
+      comp.release.value = 0.18;
+      src.connect(gain);
+      gain.connect(comp);
+      comp.connect(ctx.destination);
       src.onended = () => {
         if (activeSource === src) activeSource = null;
         resolve();
@@ -250,6 +281,14 @@
           await playShowcaseClip(clip);
           history.push({ role: "user", content: said });
           history.push({ role: "assistant", content: "[showcase:" + clip.id + "]" });
+          while (history.length > 4) history.shift();
+        } else if ((showcase && showcase.fallback === "cta") || !showcase || showcase.fallback !== "live") {
+          const cta = getCtaClip();
+          if (!cta) throw new Error("cta missing");
+          setStatus(ui, "يتكلم…");
+          await playShowcaseClip(cta);
+          history.push({ role: "user", content: said });
+          history.push({ role: "assistant", content: "[showcase:fallback_cta]" });
           while (history.length > 4) history.shift();
         } else {
           setStatus(ui, "…");
