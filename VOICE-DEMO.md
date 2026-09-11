@@ -1,3 +1,15 @@
-# Website voice demo (Plan B)
-Ears = browser speech recognition. Brain = FAQ in voice-demo.js. Mouth = SILMA via /api/tts.
-Set SILMA_API_KEY in Cloudflare Pages env. No secrets in git.
+# Website voice demo
+
+Stack:
+1. Ears = browser speech recognition (Chrome/Edge, mic permission)
+2. Brain = Cloudflare Workers AI (`/api/chat`, Llama 3.1 8B) + Booster Saudi sales playbook
+3. Mouth = SILMA Saudi TTS (`/api/tts`, needs `SILMA_API_KEY`)
+
+## Cloudflare setup
+1. Pages project → Settings → Bindings → Add **Workers AI** → Variable name: `AI` (Production + Preview)
+2. Env secret already: `SILMA_API_KEY`
+3. Redeploy after adding the AI binding
+
+## Notes
+- Cheapest brain path (free daily neuron quota on Cloudflare). If dialect quality is weak, upgrade to Gemini Flash-Lite.
+- Keep replies short for TTS (chat caps ~220 tokens; TTS truncates to 250 chars).
