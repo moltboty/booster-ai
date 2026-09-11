@@ -1,0 +1,115 @@
+{
+  "mode": "showcase",
+  "fallback": "live",
+  "clips": [
+    {
+      "id": "greeting",
+      "audio": "assets/talk/greeting.wav",
+      "triggers": [
+        "السلام عليكم",
+        "سلام عليكم",
+        "السلام",
+        "assalam",
+        "as-salamu",
+        "hello",
+        "hi"
+      ]
+    },
+    {
+      "id": "what_is",
+      "audio": "assets/talk/what_is.wav",
+      "triggers": [
+        "وش هي بوستر",
+        "من هي بوستر",
+        "ما هي بوستر",
+        "what is booster",
+        "who are you",
+        "من أنتم",
+        "من انتم"
+      ]
+    },
+    {
+      "id": "services",
+      "audio": "assets/talk/services.wav",
+      "triggers": [
+        "خدمات",
+        "نستفيد",
+        "وش تقدمون",
+        "services",
+        "what do you offer",
+        "أتمتة",
+        "اتمتة",
+        "وش تسوون"
+      ]
+    },
+    {
+      "id": "trust",
+      "audio": "assets/talk/trust.wav",
+      "triggers": [
+        "ليش نثق",
+        "لماذا نثق",
+        "جودة",
+        "تدريب",
+        "ما بعد البيع",
+        "why trust",
+        "after sales"
+      ]
+    },
+    {
+      "id": "location",
+      "audio": "assets/talk/location.wav",
+      "triggers": [
+        "وين موقع",
+        "أين موقع",
+        "فين مقر",
+        "مقركم",
+        "location",
+        "where are you",
+        "وين انتم",
+        "وين أنتم"
+      ]
+    },
+    {
+      "id": "owner",
+      "audio": "assets/talk/owner.wav",
+      "triggers": [
+        "مالك",
+        "مؤسس",
+        "صاحب",
+        "founder",
+        "owner",
+        "ceo",
+        "مين صاحب",
+        "من صاحب",
+        "مين مؤسس"
+      ]
+    },
+    {
+      "id": "pricing",
+      "audio": "assets/talk/pricing.wav",
+      "triggers": [
+        "سعر",
+        "أسعار",
+        "اسعار",
+        "تكلفة",
+        "price",
+        "pricing",
+        "cost",
+        "كم السعر"
+      ]
+    },
+    {
+      "id": "start",
+      "audio": "assets/talk/start.wav",
+      "triggers": [
+        "كيف نبدأ",
+        "كيف ابدأ",
+        "كيف أبدأ",
+        "نبدأ",
+        "how do we start",
+        "get started",
+        "تواصل"
+      ]
+    }
+  ]
+}
