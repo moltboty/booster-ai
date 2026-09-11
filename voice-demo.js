@@ -46,12 +46,12 @@
 
     root.append(
       el("div", { className: "voice-demo-card" }, [
-        el("p", { className: "voice-demo-label" }, ["جلسة صوتية"]),
+        el("p", { className: "voice-demo-label" }, ["عرض سريع"]),
         el("h2", { className: "voice-demo-title" }, ["مساعد Booster"]),
         status,
         btn,
         el("p", { className: "voice-demo-note" }, [
-          "صوت فقط · اضغط مرة للبدء ومرة للإنهاء",
+          "وضع العرض: إجابات فورية للأسئلة الشائعة · صوت فقط",
         ]),
       ])
     );
@@ -66,6 +66,8 @@
   let busy = false;
   let audioCtx = null;
   let activeSource = null;
+  let showcase = null;
+  const decodedCache = new Map();
   const history = [];
 
   function setStatus(ui, text) {
@@ -82,9 +84,7 @@
       const AC = window.AudioContext || window.webkitAudioContext;
       audioCtx = new AC();
     }
-    if (audioCtx.state === "suspended") {
-      return audioCtx.resume().then(() => audioCtx);
-    }
+    if (audioCtx.state === "suspended") return audioCtx.resume().then(() => audioCtx);
     return Promise.resolve(audioCtx);
   }
 
@@ -96,6 +96,75 @@
       activeSource = null;
     }
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  }
+
+  async function loadShowcase() {
+    if (showcase) return showcase;
+    try {
+      const res = await fetch("/assets/talk/showcase.json", { cache: "force-cache" });
+      if (!res.ok) return null;
+      showcase = await res.json();
+      return showcase;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function prefetchShowcaseAudio() {
+    const pack = await loadShowcase();
+    if (!pack || !pack.clips) return;
+    const ctx = await ensureAudioCtx();
+    await Promise.all(
+      pack.clips.map(async (clip) => {
+        if (decodedCache.has(clip.id)) return;
+        try {
+          const res = await fetch("/" + clip.audio.replace(/^\//, ""), { cache: "force-cache" });
+          if (!res.ok) return;
+          const ab = await res.arrayBuffer();
+          const buf = await ctx.decodeAudioData(ab.slice(0));
+          decodedCache.set(clip.id, buf);
+        } catch (_) {}
+      })
+    );
+  }
+
+  function matchShowcase(said) {
+    if (!showcase || !showcase.clips) return null;
+    const t = said.toLowerCase();
+    for (const clip of showcase.clips) {
+      if ((clip.triggers || []).some((k) => t.includes(String(k).toLowerCase()))) {
+        return clip;
+      }
+    }
+    return null;
+  }
+
+  async function playBuffer(buffer) {
+    const ctx = await ensureAudioCtx();
+    stopAudio();
+    await new Promise((resolve) => {
+      const src = ctx.createBufferSource();
+      activeSource = src;
+      src.buffer = buffer;
+      src.connect(ctx.destination);
+      src.onended = () => {
+        if (activeSource === src) activeSource = null;
+        resolve();
+      };
+      src.start(0);
+    });
+  }
+
+  async function playShowcaseClip(clip) {
+    let buf = decodedCache.get(clip.id);
+    if (!buf) {
+      const res = await fetch("/" + clip.audio.replace(/^\//, ""), { cache: "force-cache" });
+      if (!res.ok) throw new Error("showcase audio missing");
+      const ctx = await ensureAudioCtx();
+      buf = await ctx.decodeAudioData((await res.arrayBuffer()).slice(0));
+      decodedCache.set(clip.id, buf);
+    }
+    await playBuffer(buf);
   }
 
   async function askBrain(message) {
@@ -126,13 +195,7 @@
     stopRecognitionOnly();
     stopAudio();
     setListeningUi(ui, false);
-    setStatus(
-      ui,
-      statusText ||
-        (document.documentElement.lang === "en"
-          ? "Session ended"
-          : "انتهت الجلسة")
-    );
+    setStatus(ui, statusText || "انتهت الجلسة");
   }
 
   function armListen(ui) {
@@ -153,24 +216,22 @@
     recognition.onstart = () => {
       if (!sessionActive) return;
       setListeningUi(ui, true);
-      setStatus(ui, document.documentElement.lang === "en" ? "Listening…" : "أستمع…");
+      setStatus(ui, "أستمع…");
     };
 
     recognition.onerror = (e) => {
       const err = e.error || "unknown";
       if (!sessionActive) return;
       if (err === "aborted" || err === "no-speech") {
-        window.setTimeout(() => armListen(ui), 160);
+        window.setTimeout(() => armListen(ui), 140);
         return;
       }
       if (err === "not-allowed") endSession(ui, "المايك محظور");
-      else window.setTimeout(() => armListen(ui), 350);
+      else window.setTimeout(() => armListen(ui), 300);
     };
 
     recognition.onend = () => {
-      if (sessionActive && !busy) {
-        window.setTimeout(() => armListen(ui), 140);
-      }
+      if (sessionActive && !busy) window.setTimeout(() => armListen(ui), 120);
     };
 
     recognition.onresult = async (event) => {
@@ -180,15 +241,25 @@
       busy = true;
       stopRecognitionOnly();
       setListeningUi(ui, false);
-      setStatus(ui, document.documentElement.lang === "en" ? "…" : "…");
 
       const langHint = detectLang(said);
       try {
-        const text = await askBrain(said);
-        history.push({ role: "user", content: said });
-        history.push({ role: "assistant", content: text });
-        while (history.length > 4) history.shift();
-        await speak(ui, text, detectLang(text) || langHint);
+        const clip = matchShowcase(said);
+        if (clip) {
+          setStatus(ui, "يتكلم…");
+          await playShowcaseClip(clip);
+          history.push({ role: "user", content: said });
+          history.push({ role: "assistant", content: "[showcase:" + clip.id + "]" });
+          while (history.length > 4) history.shift();
+        } else {
+          setStatus(ui, "…");
+          const text = await askBrain(said);
+          history.push({ role: "user", content: said });
+          history.push({ role: "assistant", content: text });
+          while (history.length > 4) history.shift();
+          await speakLive(ui, text, detectLang(text) || langHint);
+        }
+        setStatus(ui, "أستمع…");
       } catch (_) {
         setStatus(ui, "تعذر الرد · حاول مرة ثانية");
       } finally {
@@ -200,15 +271,14 @@
     try {
       recognition.start();
     } catch (_) {
-      window.setTimeout(() => armListen(ui), 280);
+      window.setTimeout(() => armListen(ui), 260);
     }
   }
 
-  async function speak(ui, text, lang) {
+  async function speakLive(ui, text, lang) {
     setStatus(ui, lang === "ar" ? "يتكلم…" : "Speaking…");
     const speakText = text.slice(0, 200);
     stopAudio();
-
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
@@ -220,26 +290,12 @@
         }),
       });
       if (res.ok) {
-        const ab = await res.arrayBuffer();
         const ctx = await ensureAudioCtx();
-        const decoded = await ctx.decodeAudioData(ab.slice(0));
-        await new Promise((resolve) => {
-          const src = ctx.createBufferSource();
-          activeSource = src;
-          src.buffer = decoded;
-          src.connect(ctx.destination);
-          src.onended = () => {
-            if (activeSource === src) activeSource = null;
-            resolve();
-          };
-          src.start(0);
-        });
-        setStatus(ui, lang === "ar" ? "أستمع…" : "Listening…");
+        const buf = await ctx.decodeAudioData((await res.arrayBuffer()).slice(0));
+        await playBuffer(buf);
         return;
       }
-    } catch (_) {
-      /* fall through */
-    }
+    } catch (_) {}
 
     if ("speechSynthesis" in window) {
       await new Promise((resolve) => {
@@ -250,28 +306,22 @@
         window.speechSynthesis.cancel();
         window.speechSynthesis.speak(u);
       });
-      setStatus(ui, lang === "ar" ? "أستمع…" : "Listening…");
-      return;
     }
-    setStatus(ui, "الصوت غير متاح");
   }
 
   document.addEventListener("DOMContentLoaded", () => {
     const ui = createWidget();
+    loadShowcase().then(() => prefetchShowcaseAudio()).catch(() => {});
     ui.btn.addEventListener("click", () => {
       if (sessionActive) {
-        endSession(
-          ui,
-          document.documentElement.lang === "en"
-            ? "Session ended"
-            : "انتهت الجلسة"
-        );
+        endSession(ui, "انتهت الجلسة");
         return;
       }
       sessionActive = true;
       history.length = 0;
       ensureAudioCtx();
-      setStatus(ui, document.documentElement.lang === "en" ? "Listening…" : "أستمع…");
+      prefetchShowcaseAudio();
+      setStatus(ui, "أستمع…");
       armListen(ui);
     });
   });
