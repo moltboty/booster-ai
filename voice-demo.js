@@ -19,19 +19,19 @@
 
   function createWidget() {
     const root = el("aside", {
-      className: "voice-demo",
-      "aria-label": "عرض المساعد الصوتي",
+      className: "voice-demo voice-demo--audio-only",
+      "aria-label": "مساعد صوتي",
     });
 
-    const status = el("p", { className: "voice-demo-status", id: "voice-demo-status" }, [
-      "جلسة حية · اضغط تحدث وخلّ المايك شغّال",
-    ]);
-    const transcript = el(
+    const status = el(
       "p",
-      { className: "voice-demo-transcript", id: "voice-demo-transcript" },
-      ["اضغط تحدث للمكالمة، واضغط مرة ثانية لإنهاء الجلسة."]
+      {
+        className: "voice-demo-status",
+        id: "voice-demo-status",
+        "aria-live": "polite",
+      },
+      ["اضغط تحدث للجلسة الصوتية"]
     );
-    const reply = el("p", { className: "voice-demo-reply", id: "voice-demo-reply" }, [""]);
 
     const btn = el(
       "button",
@@ -44,34 +44,28 @@
       [el("span", { className: "voice-demo-btn-label" }, ["تحدث / Talk"])]
     );
 
-    const note = el("p", { className: "voice-demo-note" }, [
-      "جلسة مستمرة أثناء فتح المايك. للتفاصيل أو الزيارة: الفورم أو info@boosterai.sa",
-    ]);
-
     root.append(
       el("div", { className: "voice-demo-card" }, [
-        el("p", { className: "voice-demo-label" }, ["جرب الحل"]),
-        el("h2", { className: "voice-demo-title" }, ["تحدث مع مساعد Booster"]),
+        el("p", { className: "voice-demo-label" }, ["جلسة صوتية"]),
+        el("h2", { className: "voice-demo-title" }, ["مساعد Booster"]),
         status,
-        transcript,
-        reply,
         btn,
-        note,
-        el("a", { className: "voice-demo-mail", href: "mailto:info@boosterai.sa" }, [
-          "أو راسلنا: info@boosterai.sa",
+        el("p", { className: "voice-demo-note" }, [
+          "صوت فقط · اضغط مرة للبدء ومرة للإنهاء",
         ]),
       ])
     );
 
     document.body.appendChild(root);
-    return { btn, status, transcript, reply };
+    return { btn, status };
   }
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   let recognition = null;
   let sessionActive = false;
   let busy = false;
-  let audioEl = null;
+  let audioCtx = null;
+  let activeSource = null;
   const history = [];
 
   function setStatus(ui, text) {
@@ -81,6 +75,27 @@
   function setListeningUi(ui, on) {
     ui.btn.setAttribute("aria-pressed", on ? "true" : "false");
     ui.btn.classList.toggle("is-listening", on);
+  }
+
+  function ensureAudioCtx() {
+    if (!audioCtx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      audioCtx = new AC();
+    }
+    if (audioCtx.state === "suspended") {
+      return audioCtx.resume().then(() => audioCtx);
+    }
+    return Promise.resolve(audioCtx);
+  }
+
+  function stopAudio() {
+    if (activeSource) {
+      try {
+        activeSource.stop();
+      } catch (_) {}
+      activeSource = null;
+    }
+    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   }
 
   async function askBrain(message) {
@@ -109,20 +124,21 @@
     sessionActive = false;
     busy = false;
     stopRecognitionOnly();
-    if (audioEl) {
-      try {
-        audioEl.pause();
-      } catch (_) {}
-    }
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    stopAudio();
     setListeningUi(ui, false);
-    setStatus(ui, statusText || (document.documentElement.lang === "en" ? "Session ended" : "انتهت الجلسة"));
+    setStatus(
+      ui,
+      statusText ||
+        (document.documentElement.lang === "en"
+          ? "Session ended"
+          : "انتهت الجلسة")
+    );
   }
 
   function armListen(ui) {
     if (!sessionActive || busy) return;
     if (!SpeechRecognition) {
-      setStatus(ui, "Speech recognition needs Chrome/Edge on HTTPS");
+      setStatus(ui, "يلزم Chrome أو Edge مع HTTPS");
       endSession(ui);
       return;
     }
@@ -137,24 +153,23 @@
     recognition.onstart = () => {
       if (!sessionActive) return;
       setListeningUi(ui, true);
-      setStatus(ui, document.documentElement.lang === "en" ? "Listening…" : "أستمع… الجلسة شغّالة");
+      setStatus(ui, document.documentElement.lang === "en" ? "Listening…" : "أستمع…");
     };
 
     recognition.onerror = (e) => {
       const err = e.error || "unknown";
       if (!sessionActive) return;
       if (err === "aborted" || err === "no-speech") {
-        window.setTimeout(() => armListen(ui), 200);
+        window.setTimeout(() => armListen(ui), 160);
         return;
       }
-      setStatus(ui, "Mic error: " + err);
-      if (err === "not-allowed") endSession(ui, "Mic blocked");
-      else window.setTimeout(() => armListen(ui), 400);
+      if (err === "not-allowed") endSession(ui, "المايك محظور");
+      else window.setTimeout(() => armListen(ui), 350);
     };
 
     recognition.onend = () => {
       if (sessionActive && !busy) {
-        window.setTimeout(() => armListen(ui), 180);
+        window.setTimeout(() => armListen(ui), 140);
       }
     };
 
@@ -164,27 +179,18 @@
       if (!said) return;
       busy = true;
       stopRecognitionOnly();
+      setListeningUi(ui, false);
+      setStatus(ui, document.documentElement.lang === "en" ? "…" : "…");
 
       const langHint = detectLang(said);
-      ui.transcript.textContent =
-        (document.documentElement.lang === "en" ? "You said: " : "قلت: ") + said;
-      setStatus(ui, document.documentElement.lang === "en" ? "Thinking…" : "يفكر…");
-      setListeningUi(ui, false);
-
       try {
         const text = await askBrain(said);
         history.push({ role: "user", content: said });
         history.push({ role: "assistant", content: text });
         while (history.length > 4) history.shift();
-        ui.reply.textContent = text;
         await speak(ui, text, detectLang(text) || langHint);
-      } catch (err) {
-        const fail =
-          langHint === "ar"
-            ? "تعذر الرد. عبّ الفورم أو راسل info@boosterai.sa"
-            : "Could not reply. Use the form or email info@boosterai.sa";
-        ui.reply.textContent = fail;
-        setStatus(ui, String(err && err.message ? err.message : err).slice(0, 120));
+      } catch (_) {
+        setStatus(ui, "تعذر الرد · حاول مرة ثانية");
       } finally {
         busy = false;
         if (sessionActive) armListen(ui);
@@ -194,13 +200,15 @@
     try {
       recognition.start();
     } catch (_) {
-      window.setTimeout(() => armListen(ui), 300);
+      window.setTimeout(() => armListen(ui), 280);
     }
   }
 
   async function speak(ui, text, lang) {
     setStatus(ui, lang === "ar" ? "يتكلم…" : "Speaking…");
-    const speakText = text.slice(0, 250);
+    const speakText = text.slice(0, 200);
+    stopAudio();
+
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
@@ -212,17 +220,19 @@
         }),
       });
       if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        if (audioEl) {
-          audioEl.pause();
-          URL.revokeObjectURL(audioEl.src);
-        }
-        audioEl = new Audio(url);
+        const ab = await res.arrayBuffer();
+        const ctx = await ensureAudioCtx();
+        const decoded = await ctx.decodeAudioData(ab.slice(0));
         await new Promise((resolve) => {
-          audioEl.onended = resolve;
-          audioEl.onerror = resolve;
-          audioEl.play().catch(resolve);
+          const src = ctx.createBufferSource();
+          activeSource = src;
+          src.buffer = decoded;
+          src.connect(ctx.destination);
+          src.onended = () => {
+            if (activeSource === src) activeSource = null;
+            resolve();
+          };
+          src.start(0);
         });
         setStatus(ui, lang === "ar" ? "أستمع…" : "Listening…");
         return;
@@ -243,20 +253,25 @@
       setStatus(ui, lang === "ar" ? "أستمع…" : "Listening…");
       return;
     }
-    setStatus(ui, "Text only");
+    setStatus(ui, "الصوت غير متاح");
   }
 
   document.addEventListener("DOMContentLoaded", () => {
     const ui = createWidget();
     ui.btn.addEventListener("click", () => {
       if (sessionActive) {
-        endSession(ui, document.documentElement.lang === "en" ? "Session ended" : "انتهت الجلسة · اضغط تحدث للبداية");
+        endSession(
+          ui,
+          document.documentElement.lang === "en"
+            ? "Session ended"
+            : "انتهت الجلسة"
+        );
         return;
       }
       sessionActive = true;
       history.length = 0;
-      ui.reply.textContent = "";
-      setStatus(ui, document.documentElement.lang === "en" ? "Session on" : "الجلسة شغّالة");
+      ensureAudioCtx();
+      setStatus(ui, document.documentElement.lang === "en" ? "Listening…" : "أستمع…");
       armListen(ui);
     });
   });
