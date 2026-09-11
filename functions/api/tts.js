@@ -33,6 +33,21 @@ function float32ToWav(float32Array, sampleRate = 24000) {
   return buffer;
 }
 
+function peakSafe(float32, targetPeak = 0.89) {
+  let peak = 0;
+  for (let i = 0; i < float32.length; i++) {
+    const a = Math.abs(float32[i]);
+    if (a > peak) peak = a;
+  }
+  if (peak < 1e-6) return float32;
+  // Only turn DOWN if clipping risk — never boost (boost caused harsh clipping).
+  const scale = peak > targetPeak ? targetPeak / peak : 1;
+  if (scale === 1) return float32;
+  const out = new Float32Array(float32.length);
+  for (let i = 0; i < float32.length; i++) out[i] = float32[i] * scale;
+  return out;
+}
+
 export async function onRequestPost(context) {
   const key = context.env.SILMA_API_KEY;
   if (!key) {
@@ -67,8 +82,8 @@ export async function onRequestPost(context) {
       model_id,
       text,
       voice_id,
-      creativity: 0.2,
-      speed: 0.2,
+      creativity: 0.15,
+      speed: 0.25,
     }),
   });
 
@@ -81,14 +96,11 @@ export async function onRequestPost(context) {
   }
 
   const ab = await upstream.arrayBuffer();
-  const float32 = new Float32Array(ab);
-  // Tiny lead-in only — long silence made the first words sound quiet.
-  const padSamples = Math.floor(0.04 * 24000);
+  const float32 = peakSafe(new Float32Array(ab), 0.89);
+  // Minimal pad so players don't chop the first phoneme — keep it short.
+  const padSamples = Math.floor(0.02 * 24000);
   const padded = new Float32Array(padSamples + float32.length);
-  // Mild gain so live TTS matches showcase loudness.
-  for (let i = 0; i < float32.length; i++) {
-    padded[padSamples + i] = Math.max(-1, Math.min(1, float32[i] * 1.25));
-  }
+  padded.set(float32, padSamples);
   const wav = float32ToWav(padded, 24000);
   return new Response(wav, {
     headers: {
