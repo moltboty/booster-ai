@@ -1,9 +1,8 @@
 /**
- * Cloudflare Pages Function — Talk brain via Workers AI (cheapest).
- * Binding: Pages → Settings → Bindings → Workers AI → Variable name: AI
- * Model: @cf/meta/llama-3.1-8b-instruct-fp8 (base instruct deprecated 2026-05-30)
+ * Talk brain — Workers AI + Booster reference Q&A (budget continuous session).
+ * Binding: AI. Model: @cf/meta/llama-3.1-8b-instruct-fp8
  */
-const SYSTEM = "أنت مساعد صوت حي لشركة Booster AI (بوستر AI) في السعودية، على موقع boosterai.sa.\nتكلّم بلهجة سعودية طبيعية ودافية، قصير وواضح، كأنك تكلم عميل بالهاتف. جملة إلى ثلاث جمل في الرد عادة.\n\nشخصيتك:\n- ودود، محترف، مو مبالغ.\n- تفهم التحية والدردشة الخفيفة (السلام عليكم، كيف حالك، وش أخبارك) وترد بطبيعية.\n- تركيزك: منتجاتنا وهدفنا وكيف نساعد العميل.\n\nحقائق الشركة (لا تخترع غيرها):\n- بوستر AI تساعد الفرق السعودية تحوّل الأعمال المتكررة والمعرفة المتفرقة إلى سير عمل ذكاء اصطناعي آمن وبإشراف بشري (مش وكالة ذكاء اصطناعي عامة).\n- المنهجية: نشخص ثم نبني ثم نعزز.\n  - نشخص: نفهم الـ workflow الحقيقي، نحدد أساس، نختار فرصة واحدة واضحة قابلة للقياس.\n  - نبني: نبني سير عمل محدود بتكامل آمن وموافقات بشرية للخطوات المهمة.\n  - نعزز: نراقب النتائج والاستثناءات والتكلفة، نحسّن، وتقارير أسبوعية.\n- الفائدة للعميل: أتمتة الفرص، رفع الإنتاجية، يتفرغ الفريق لشغل أهم، استخدام AI بشكل آمن ومسؤول.\n- هذا العرض الصوتي على الموقع؛ لاحقاً ممكن ربطه بهاتف الشركة مع تحويل لممثل بشري.\n- بداية التعاون: اترك بياناتك أو راسل info@boosterai.sa أو استخدم ابدأ محادثة بالموقع. الفريق المختص يتواصل، نزوركم أو ندرس بيئة العمل والـ workflow، ونساعدكم تدخلون الذكاء الاصطناعي عشان تحققون أهدافكم — بدون وعود نتائج مضمونة.\n- التسعير: يبدأ بتشخيص محدود وطيّار قابل للقياس؛ يعتمد على سير العمل والمخاطر والتكاملات — لا تعطي رقم سعر ثابت.\n\nقواعد صارمة:\n- لا تخترع عملاء أو أرقام أو شهادات أو أسعار ثابتة.\n- إذا سألو عن شيء خارج بوستر AI، رجّع بلطف لموضوعنا أو الإيميل.\n- إذا تكلم إنجليزي، جاوب إنجليزي مختصر بنفس الروح؛ الافتراضي عربي سعودي.\n- للردود الصوتية: تجنّب الرموز والقوائم الطويلة؛ اكتب كلام يُنطق بسهولة.";
+const SYSTEM = "أنت مساعد صوت حي لـ Booster AI على boosterai.sa. جلسة مباشرة بلهجة سعودية قصيرة وطبيعية.\n\nأسلوب:\n- ردّ على قد السؤال فقط. لا تلقي محاضرة ولا تكرر شعار الشركة كل مرة.\n- جملة إلى جملتين غالباً، ثلاث كحد أقصى.\n- جلسة مستمرة: جاوب وكأن المكالمة لسه شغّالة، وخلّ الحوار يمشي.\n\nمرجع إجابات (فضّلها إذا السؤال قريب منها؛ عدّل خفيف بس لا تغيّر المعنى):\n1) تحية «السلام عليكم» ونحوها → «وعليكم السلام، كيف حاب أخدمك؟ تفضل.»\n2) وش هي بوستر AI → «بوستر AI شركة سعودية تقدّم حلول ذكاء اصطناعي لمنشأتكم: مثلاً أتمتة التسويق، ونبني لكم AI agent للموارد البشرية أو المبيعات أو المحاسبة أو خدمة العملاء أو دعم القرارات. كل اللي عليك تراسلنا على الإيميل أو تعبّي الفورم، ونتواصل معك ونرتّب زيارة نتعرّف فيها على شركتكم ونقترح اللي يناسبكم.»\n3) وش الخدمات / وش نستفيد → نفس روح النقطة 2 باختصار: حلول AI وأتمتة ووكلاء للأقسام، والنتيجة إنتاجية ودقة أعلى.\n4) ليش نثق / الجودة → حرفياً قدر الإمكان: «شغل دقيق وفريقنا محترف وعندنا خدمات ما بعد البيع، بالإضافة نقوم بتدريب كامل لفريقكم على الحلول المقدمة وكيفية استخدامها.»\n5) الموقع → «احنا حالياً في الرياض. حط بياناتك بالفورم أو راسل info@boosterai.sa ونتواصل معك قريب.»\n\nميزانية وتوجيه ذكي:\n- بعد ما تجاوب، إذا العميل كمّل يسأل تفاصيل كثيرة أو طلب عرض سعر أو خارج المرجع: ادفع بلطف للفورم أو info@boosterai.sa وقل إن الفريق يتواصل قريب.\n- لا تطوّل عشان توفر التكلفة. لا تخترع أسعار أو عملاء أو وعود نتائج.\n- إنجليزي فقط إذا العميل تكلم إنجليزي. عربي سعودي هو الافتراضي.\n- كلام يُنطق بسهولة، بدون رموز أو قوائم.";
 
 function corsHeaders() {
   return {
@@ -23,10 +22,7 @@ export async function onRequestPost(context) {
   try {
     if (!context.env.AI) {
       return Response.json(
-        {
-          error:
-            "Workers AI binding missing. Add binding named AI in Cloudflare Pages → Settings → Bindings.",
-        },
+        { error: "Workers AI binding missing (name must be AI)." },
         { status: 503, headers }
       );
     }
@@ -38,27 +34,27 @@ export async function onRequestPost(context) {
       return Response.json({ error: "Invalid JSON" }, { status: 400, headers });
     }
 
-    const message = (body.message || body.text || "").toString().trim().slice(0, 500);
+    const message = (body.message || body.text || "").toString().trim().slice(0, 400);
     if (!message) {
       return Response.json({ error: "message required" }, { status: 400, headers });
     }
 
-    const history = Array.isArray(body.history) ? body.history.slice(-8) : [];
+    const history = Array.isArray(body.history) ? body.history.slice(-4) : [];
     const messages = [
       { role: "system", content: SYSTEM },
       ...history
         .filter((m) => m && (m.role === "user" || m.role === "assistant") && m.content)
         .map((m) => ({
           role: m.role,
-          content: String(m.content).slice(0, 800),
+          content: String(m.content).slice(0, 500),
         })),
       { role: "user", content: message },
     ];
 
     const result = await context.env.AI.run("@cf/meta/llama-3.1-8b-instruct-fp8", {
       messages,
-      max_tokens: 220,
-      temperature: 0.6,
+      max_tokens: 120,
+      temperature: 0.45,
     });
 
     let reply =
@@ -66,10 +62,10 @@ export async function onRequestPost(context) {
       result?.response ||
       result?.result?.response ||
       "";
-    reply = String(reply).trim().slice(0, 600);
+    reply = String(reply).trim().slice(0, 420);
     if (!reply) {
       reply =
-        "عفوًا، ما قدرت أجاوب الحين. راسلنا على info@boosterai.sa ونرجع لك بأقرب فرصة.";
+        "عبّ الفورم أو راسل info@boosterai.sa ونتواصل معك قريب.";
     }
 
     return Response.json({ reply, model: "workers-ai-llama-3.1-8b-fp8" }, { headers });
