@@ -82,8 +82,8 @@ export async function onRequestPost(context) {
       model_id,
       text,
       voice_id,
-      creativity: 0.15,
-      speed: 0.25,
+      creativity: 0.2,
+      speed: 0.2,
     }),
   });
 
