@@ -1,18 +1,75 @@
 {
   "mode": "showcase",
-  "fallback": "live",
+  "fallback": "cta",
+  "cta_clip_id": "fallback_cta",
   "clips": [
     {
-      "id": "greeting",
-      "audio": "assets/talk/greeting.wav",
+      "id": "greeting_sabah",
+      "audio": "assets/talk/greeting_sabah.wav",
+      "triggers": [
+        "صباح الخير",
+        "صباح النور",
+        "صبح الخير",
+        "صباحكم",
+        "good morning",
+        "sabah al"
+      ]
+    },
+    {
+      "id": "greeting_masa",
+      "audio": "assets/talk/greeting_masa.wav",
+      "triggers": [
+        "مساء الخير",
+        "مساء النور",
+        "مسا الخير",
+        "مساءكم",
+        "good evening",
+        "masa al"
+      ]
+    },
+    {
+      "id": "greeting_alo",
+      "audio": "assets/talk/greeting_alo.wav",
+      "triggers": [
+        "ألو",
+        "الو",
+        "الو؟",
+        "ألو؟",
+        "الو الو",
+        "hello?",
+        "alo"
+      ]
+    },
+    {
+      "id": "greeting_ahlan",
+      "audio": "assets/talk/greeting_ahlan.wav",
+      "triggers": [
+        "أهلا",
+        "اهلا",
+        "أهلاً",
+        "اهلاً",
+        "هلا",
+        "هلا والله",
+        "مرحبا",
+        "مرحباً",
+        "يا هلا",
+        "ahlan",
+        "marhaba"
+      ]
+    },
+    {
+      "id": "greeting_salam",
+      "audio": "assets/talk/greeting_salam.wav",
       "triggers": [
         "السلام عليكم",
         "سلام عليكم",
         "السلام",
+        "سلام",
+        "عليكم السلام",
         "assalam",
         "as-salamu",
-        "hello",
-        "hi"
+        "salaam",
+        "salam"
       ]
     },
     {
@@ -20,26 +77,47 @@
       "audio": "assets/talk/what_is.wav",
       "triggers": [
         "وش هي بوستر",
-        "من هي بوستر",
+        "وش هو بوستر",
         "ما هي بوستر",
+        "ما هو بوستر",
+        "من هي بوستر",
+        "من هو بوستر",
+        "كلمني عن بوستر",
+        "كلميني عن بوستر",
+        "عرفني على بوستر",
+        "وش بوستر",
+        "ما بوستر",
+        "بوستر اي",
+        "بوستر AI",
         "what is booster",
         "who are you",
+        "tell me about booster",
         "من أنتم",
-        "من انتم"
+        "من انتم",
+        "وش تسوون أنتم"
       ]
     },
     {
       "id": "services",
       "audio": "assets/talk/services.wav",
       "triggers": [
+        "وش خدماتكم",
+        "وش عندكم",
+        "وش السيرفيسز",
+        "وش أنواع خدماتكم",
+        "أنواع خدماتكم",
+        "الخدمات",
+        "خدماتكم",
         "خدمات",
         "نستفيد",
         "وش تقدمون",
-        "services",
-        "what do you offer",
+        "وش تسوون",
         "أتمتة",
         "اتمتة",
-        "وش تسوون"
+        "سيرفس",
+        "services",
+        "what do you offer",
+        "what services"
       ]
     },
     {
@@ -47,26 +125,40 @@
       "audio": "assets/talk/trust.wav",
       "triggers": [
         "ليش نثق",
+        "ليش أثق",
+        "ليش اثق",
         "لماذا نثق",
+        "وش أفضل شي فيكم",
+        "وش أفضل ميزاتكم",
+        "وش ميزاتكم",
+        "ميزاتكم",
         "جودة",
         "تدريب",
         "ما بعد البيع",
         "why trust",
-        "after sales"
+        "after sales",
+        "why should i trust"
       ]
     },
     {
       "id": "location",
       "audio": "assets/talk/location.wav",
       "triggers": [
+        "وين مقركم",
+        "وين الموقع حقكم",
+        "وين موقعكم",
+        "أين موقعكم",
+        "أين مقركم",
         "وين موقع",
         "أين موقع",
         "فين مقر",
         "مقركم",
+        "موقعكم",
+        "وين انتم",
+        "وين أنتم",
         "location",
         "where are you",
-        "وين انتم",
-        "وين أنتم"
+        "where is your office"
       ]
     },
     {
@@ -81,13 +173,21 @@
         "ceo",
         "مين صاحب",
         "من صاحب",
-        "مين مؤسس"
+        "مين مؤسس",
+        "من مؤسس"
       ]
     },
     {
       "id": "pricing",
       "audio": "assets/talk/pricing.wav",
       "triggers": [
+        "كم السعر",
+        "كم أسعاركم",
+        "كم اسعاركم",
+        "كيف يتم حساب السعر",
+        "كيف تحسبون السعر",
+        "كم هي التكلفة",
+        "كم التكلفة",
         "سعر",
         "أسعار",
         "اسعار",
@@ -95,7 +195,7 @@
         "price",
         "pricing",
         "cost",
-        "كم السعر"
+        "how much"
       ]
     },
     {
@@ -103,13 +203,29 @@
       "audio": "assets/talk/start.wav",
       "triggers": [
         "كيف نبدأ",
+        "كيف نبدأ معكم",
+        "كيف أتواصل معكم",
+        "كيف اتواصل معكم",
+        "كيف أقدر أتقابل معكم",
+        "كيف اقدر اتقابل معكم",
+        "هل ممكن تتواصلون معي",
+        "هل ممكن تتواصل معي",
         "كيف ابدأ",
         "كيف أبدأ",
         "نبدأ",
+        "تواصل",
+        "أتواصل",
+        "اتواصل",
         "how do we start",
         "get started",
-        "تواصل"
+        "contact you",
+        "book a call"
       ]
+    },
+    {
+      "id": "fallback_cta",
+      "audio": "assets/talk/fallback_cta.wav",
+      "triggers": []
     }
   ]
 }
