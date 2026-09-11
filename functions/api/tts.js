@@ -82,10 +82,13 @@ export async function onRequestPost(context) {
 
   const ab = await upstream.arrayBuffer();
   const float32 = new Float32Array(ab);
-  // Soft lead-in so mobile/desktop players don't clip the first phonemes.
-  const padSamples = Math.floor(0.18 * 24000);
+  // Tiny lead-in only — long silence made the first words sound quiet.
+  const padSamples = Math.floor(0.04 * 24000);
   const padded = new Float32Array(padSamples + float32.length);
-  padded.set(float32, padSamples);
+  // Mild gain so live TTS matches showcase loudness.
+  for (let i = 0; i < float32.length; i++) {
+    padded[padSamples + i] = Math.max(-1, Math.min(1, float32[i] * 1.25));
+  }
   const wav = float32ToWav(padded, 24000);
   return new Response(wav, {
     headers: {
