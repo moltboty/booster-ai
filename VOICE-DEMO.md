@@ -13,3 +13,10 @@ Stack:
 ## Notes
 - Cheapest brain path (free daily neuron quota on Cloudflare). If dialect quality is weak, upgrade to Gemini Flash-Lite.
 - Keep replies short for TTS (chat caps ~220 tokens; TTS truncates to 250 chars).
+
+
+## Grounding pack
+- Source of truth for Talk facts: `grounding-pack.json` (Agent Grounding Pack).
+- Notion template: https://app.notion.com/p/3d8be51e20918108b92bedcc2b9759c2
+- `/api/chat` loads the JSON at runtime. High-risk intents (owner, quote-only pricing, greeting, location) use canned pack replies and skip the LLM.
+- For a new client: duplicate the Notion pack → fill → export into `grounding-pack.json` → deploy.
