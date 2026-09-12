@@ -1,15 +1,62 @@
+/**
+ * STAGING Talk widget — unified LLM + Fasee7 Lady TTS
+ * mic/typed → /api/chat → speakReply → /api/tts (Fasee7 Lady WAV)
+ * No speechSynthesis. No SILMA. No greeting-clip FAQ router.
+ */
 (() => {
-  function detectLang(text) {
-    return /[\u0600-\u06FF]/.test(text) ? "ar" : "en";
-  }
+  const STATES = Object.freeze({
+    IDLE: "IDLE",
+    LISTENING: "LISTENING",
+    TRANSCRIBING: "TRANSCRIBING",
+    THINKING: "THINKING",
+    SPEAKING: "SPEAKING",
+    ERROR: "ERROR",
+  });
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const DEBUG = new URLSearchParams(window.location.search).get("debug") === "1";
+  const THINKING_MS = 20000;
+  const HISTORY_MAX = 12;
+
+  const STATUS_AR = {
+    IDLE: "اضغط للاتصال أو اكتب رسالة",
+    LISTENING: "أستمع… أو اكتب",
+    TRANSCRIBING: "جارٍ تحويل الكلام…",
+    THINKING: "أفكر…",
+    SPEAKING: "تتحدث…",
+    ERROR: "تعذر الرد · حاول مرة ثانية",
+  };
+
+  const session = {
+    state: STATES.IDLE,
+    active: false,
+    busy: false,
+    leadStage: "explore",
+    history: [],
+    recognition: null,
+    thinkingTimer: 0,
+  };
+
+  const debug = {
+    transcript: "",
+    llmJson: null,
+    latencyMs: null,
+    errors: [],
+    lastTurnAt: null,
+  };
+
+  let ui = null;
 
   function el(tag, attrs = {}, children = []) {
     const node = document.createElement(tag);
     Object.entries(attrs).forEach(([k, v]) => {
       if (k === "className") node.className = v;
+      else if (k === "dataset") Object.assign(node.dataset, v);
       else if (k.startsWith("on") && typeof v === "function")
         node.addEventListener(k.slice(2).toLowerCase(), v);
-      else if (v !== null && v !== undefined) node.setAttribute(k, v);
+      else if (v === false || v === null || v === undefined) return;
+      else if (v === true) node.setAttribute(k, "");
+      else node.setAttribute(k, v);
     });
     children.forEach((c) =>
       node.append(typeof c === "string" ? document.createTextNode(c) : c)
@@ -17,422 +64,390 @@
     return node;
   }
 
+
+  function injectStagingCss() {
+    if (document.getElementById("voice-demo-staging-css")) return;
+    const style = document.createElement("style");
+    style.id = "voice-demo-staging-css";
+    style.textContent = '/* STAGING Phase B — Talk widget + debug panel. Not for production. */\n\n.voice-demo {\n  position: fixed;\n  inset-inline-end: 1.1rem;\n  inset-block-end: 1.1rem;\n  z-index: 40;\n  width: min(24rem, calc(100vw - 1.5rem));\n  font-family: inherit;\n}\n\n.voice-demo-card {\n  background: rgba(7, 23, 71, 0.94);\n  color: #f4f7ff;\n  border: 1px solid rgba(16, 201, 154, 0.35);\n  border-radius: 1.25rem;\n  padding: 1rem 1.1rem 1.15rem;\n  box-shadow: 0 18px 50px rgba(3, 10, 35, 0.45);\n  backdrop-filter: blur(10px);\n}\n\n.voice-demo-label {\n  margin: 0 0 0.25rem;\n  font-size: 0.75rem;\n  letter-spacing: 0.04em;\n  color: #10c99a;\n  text-transform: uppercase;\n}\n\n.voice-demo-title {\n  margin: 0 0 0.55rem;\n  font-size: 1.15rem;\n  line-height: 1.35;\n  font-weight: 700;\n}\n\n.voice-demo-status,\n.voice-demo-transcript,\n.voice-demo-reply,\n.voice-demo-note {\n  margin: 0 0 0.45rem;\n  font-size: 0.86rem;\n  line-height: 1.45;\n  color: rgba(244, 247, 255, 0.88);\n}\n\n.voice-demo-transcript {\n  min-height: 1.3rem;\n  color: #9ef0d3;\n}\n\n.voice-demo-reply {\n  min-height: 2.6rem;\n  color: #fff;\n}\n\n.voice-demo-note {\n  font-size: 0.72rem;\n  color: rgba(244, 247, 255, 0.62);\n}\n\n.voice-demo-btn {\n  width: 100%;\n  margin: 0.35rem 0 0.55rem;\n  border: 0;\n  border-radius: 999px;\n  padding: 0.85rem 1rem;\n  background: #10c99a;\n  color: #052033;\n  font-weight: 700;\n  cursor: pointer;\n}\n\n.voice-demo-btn.is-in-call,\n.voice-demo-btn.is-listening {\n  background: #e11d48;\n  color: #fff;\n}\n\n.voice-demo[data-state="THINKING"] .voice-demo-status,\n.voice-demo[data-state="TRANSCRIBING"] .voice-demo-status {\n  color: #fde68a;\n}\n\n.voice-demo[data-state="ERROR"] .voice-demo-status {\n  color: #fda4af;\n}\n\n.voice-demo[data-state="SPEAKING"] .voice-demo-reply {\n  outline: 1px solid rgba(16, 201, 154, 0.45);\n  border-radius: 0.5rem;\n  padding: 0.35rem 0.45rem;\n}\n\n.voice-demo-form {\n  display: flex;\n  gap: 0.4rem;\n  margin: 0.2rem 0 0.5rem;\n}\n\n.voice-demo-input {\n  flex: 1;\n  min-width: 0;\n  border: 1px solid rgba(244, 247, 255, 0.18);\n  border-radius: 0.7rem;\n  background: rgba(255, 255, 255, 0.06);\n  color: #fff;\n  padding: 0.55rem 0.7rem;\n}\n\n.voice-demo-input::placeholder {\n  color: rgba(244, 247, 255, 0.45);\n}\n\n.voice-demo-send {\n  border: 0;\n  border-radius: 0.7rem;\n  padding: 0.55rem 0.8rem;\n  background: #0a2357;\n  color: #c9f7e8;\n  cursor: pointer;\n  font-weight: 700;\n}\n\n.voice-demo-debug {\n  margin-top: 0.65rem;\n  max-height: min(42vh, 22rem);\n  overflow: auto;\n  background: #07101f;\n  color: #d1fae5;\n  border: 1px solid rgba(16, 201, 154, 0.28);\n  border-radius: 0.85rem;\n  padding: 0.65rem 0.75rem;\n  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;\n  font-size: 0.68rem;\n  line-height: 1.4;\n  direction: ltr;\n  text-align: left;\n}\n\n.voice-demo-debug h3 {\n  margin: 0 0 0.4rem;\n  font-size: 0.72rem;\n  color: #10c99a;\n  letter-spacing: 0.06em;\n  text-transform: uppercase;\n}\n\n.voice-demo-debug-body {\n  margin: 0;\n  white-space: pre-wrap;\n  word-break: break-word;\n}\n\n@media (max-width: 640px) {\n  .voice-demo { inset-inline: 0.75rem; width: auto; }\n}\n';
+    document.head.appendChild(style);
+  }
+
   function createWidget() {
-    const root = el("aside", {
-      className: "voice-demo voice-demo--audio-only",
-      "aria-label": "مساعد صوتي",
-    });
     const status = el(
       "p",
       { className: "voice-demo-status", id: "voice-demo-status", "aria-live": "polite" },
-      ["اضغط للاتصال بالمساعد"]
+      [STATUS_AR.IDLE]
     );
+    const transcript = el("p", { className: "voice-demo-transcript", id: "voice-demo-transcript" }, [
+      "",
+    ]);
+    const reply = el("p", { className: "voice-demo-reply", id: "voice-demo-reply" }, [""]);
     const btnLabel = el("span", { className: "voice-demo-btn-label" }, ["ابدأ المكالمة"]);
     const btn = el(
       "button",
       { type: "button", className: "voice-demo-btn", id: "voice-demo-btn", "aria-pressed": "false" },
       [btnLabel]
     );
-    root.append(
-      el("div", { className: "voice-demo-card" }, [
-        el("p", { className: "voice-demo-label" }, ["مكالمة صوتية"]),
-        el("h2", { className: "voice-demo-title" }, ["مساعد بوستر"]),
-        status,
-        btn,
-        el("p", { className: "voice-demo-note" }, ["أخضر للاتصال · أحمر للإنهاء"]),
-      ])
+    const input = el("input", {
+      type: "text",
+      className: "voice-demo-input",
+      id: "voice-demo-input",
+      placeholder: "اكتب رسالتك هنا…",
+      autocomplete: "off",
+      "aria-label": "رسالة نصية",
+    });
+    const send = el(
+      "button",
+      { type: "submit", className: "voice-demo-send", id: "voice-demo-send" },
+      ["إرسال"]
     );
+    const form = el("form", { className: "voice-demo-form", id: "voice-demo-form" }, [input, send]);
+
+    const root = el(
+      "aside",
+      {
+        className: "voice-demo voice-demo--staging" + (DEBUG ? " voice-demo--debug" : ""),
+        "aria-label": "مساعد بوستر — staging",
+        dataset: { state: STATES.IDLE },
+      },
+      [
+        el("div", { className: "voice-demo-card" }, [
+          el("p", { className: "voice-demo-label" }, ["Staging · Lady TTS"]),
+          el("h2", { className: "voice-demo-title" }, ["مساعد بوستر"]),
+          status,
+          transcript,
+          reply,
+          btn,
+          form,
+          el("p", { className: "voice-demo-note" }, [
+            "مسار موحّد: /api/chat → Lady عبر /api/tts · بدون speechSynthesis",
+          ]),
+        ]),
+      ]
+    );
+
+    let debugPanel = null;
+    if (DEBUG) {
+      debugPanel = el("div", {
+        className: "voice-demo-debug",
+        id: "voice-demo-debug",
+        dir: "ltr",
+      });
+      debugPanel.innerHTML =
+        "<h3>debug=1</h3><pre class=\"voice-demo-debug-body\" id=\"voice-demo-debug-body\"></pre>";
+      root.append(debugPanel);
+    }
+
     document.body.appendChild(root);
-    return { btn, btnLabel, status };
+    return { root, btn, btnLabel, status, transcript, reply, form, input, send, debugPanel };
   }
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let recognition = null;
-  let sessionActive = false;
-  let busy = false;
-  let audioCtx = null;
-  let activeSource = null;
-  let showcase = null;
-  let clipTexts = null;
-  const decodedCache = new Map();
-  const history = [];
-  const AUDIO_V = "fasee7lady6";
-
-  function setStatus(ui, text) {
-    ui.status.textContent = text;
+  function renderDebug() {
+    if (!DEBUG || !ui || !ui.debugPanel) return;
+    const body = ui.debugPanel.querySelector("#voice-demo-debug-body");
+    if (!body) return;
+    const payload = {
+      state: session.state,
+      lead_stage: session.leadStage,
+      session_active: session.active,
+      transcript: debug.transcript,
+      latency_ms: debug.latencyMs,
+      errors: debug.errors.slice(-6),
+      llm_json: debug.llmJson,
+      last_turn_at: debug.lastTurnAt,
+    };
+    body.textContent = JSON.stringify(payload, null, 2);
   }
 
-  function setCallUi(ui, on) {
+  function setStatus(text) {
+    if (ui) ui.status.textContent = text;
+  }
+
+  function setState(next, statusText) {
+    session.state = STATES[next] || next;
+    if (ui) {
+      ui.root.dataset.state = session.state;
+      ui.root.classList.toggle("is-busy", session.busy);
+      ui.root.classList.toggle("is-in-session", session.active);
+    }
+    setStatus(statusText || STATUS_AR[session.state] || session.state);
+    renderDebug();
+  }
+
+  function setCallUi(on) {
     ui.btn.setAttribute("aria-pressed", on ? "true" : "false");
     ui.btn.classList.toggle("is-in-call", on);
-    ui.btn.classList.toggle("is-listening", on);
+    ui.btn.classList.toggle("is-listening", on && session.state === STATES.LISTENING);
     ui.btnLabel.textContent = on ? "إنهاء المكالمة" : "ابدأ المكالمة";
   }
 
-  function ensureAudioCtx() {
-    if (!audioCtx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      audioCtx = new AC();
-    }
-    if (audioCtx.state === "suspended") return audioCtx.resume().then(() => audioCtx);
-    return Promise.resolve(audioCtx);
+  function pushError(msg) {
+    debug.errors.push({ t: new Date().toISOString(), message: String(msg).slice(0, 240) });
+    renderDebug();
   }
 
-  function stopAudio() {
-    if (activeSource) {
-      try { activeSource.stop(); } catch (_) {}
-      activeSource = null;
-    }
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-  }
-
-  async function playTone(kind) {
-    const ctx = await ensureAudioCtx();
-    const now = ctx.currentTime;
-    const gain = ctx.createGain();
-    gain.connect(ctx.destination);
-    const osc = ctx.createOscillator();
-    osc.type = "sine";
-    if (kind === "start") {
-      osc.frequency.setValueAtTime(880, now);
-      osc.frequency.setValueAtTime(1175, now + 0.09);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
-      osc.connect(gain);
-      osc.start(now);
-      osc.stop(now + 0.24);
-      await new Promise((r) => setTimeout(r, 260));
-    } else {
-      osc.frequency.setValueAtTime(660, now);
-      osc.frequency.setValueAtTime(440, now + 0.1);
-      gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(0.1, now + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
-      osc.connect(gain);
-      osc.start(now);
-      osc.stop(now + 0.3);
-      await new Promise((r) => setTimeout(r, 320));
+  function clearThinkingTimer() {
+    if (session.thinkingTimer) {
+      window.clearTimeout(session.thinkingTimer);
+      session.thinkingTimer = 0;
     }
   }
 
-  async function loadShowcase() {
-    if (showcase) return showcase;
+  /**
+   * Single output hook.
+   * Phase B: text-only stub (no audio).
+   * Phase C: replace the body with fetch("/api/tts") → Fasee7 Lady WAV.
+   * Never call speechSynthesis. Never play greeting clips.
+   */
+  let activeAudio = null;
+
+  async function speakReply(text) {
+    const clean = String(text || "").trim();
+    if (ui) ui.reply.textContent = clean;
+    if (!clean) return clean;
+
+    // Never speechSynthesis. Lady only via /api/tts → Fasee7.
     try {
-      const res = await fetch("/assets/talk/showcase.json", { cache: "no-cache" });
-      if (!res.ok) return null;
-      showcase = await res.json();
-      return showcase;
-    } catch (_) { return null; }
-  }
-
-  async function loadClipTexts() {
-    if (clipTexts) return clipTexts;
-    try {
-      const res = await fetch("/assets/talk/clips-text.json", { cache: "no-cache" });
-      if (!res.ok) return null;
-      clipTexts = await res.json();
-      return clipTexts;
-    } catch (_) { return null; }
-  }
-
-  function normalizeSaid(said) {
-    return String(said || "")
-      .toLowerCase()
-      .replace(/[أإآ]/g, "ا")
-      .replace(/ة/g, "ه")
-      .replace(/ى/g, "ي")
-      .replace(/[ًٌٍَُِّْ]/g, "")
-      .replace(/[?!؟.,،:;]/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
-  }
-
-  function arabicPrefer(text) {
-    let t = String(text || "").trim();
-    if (!t) return "";
-    if (/\[?\s*clip\s*[:\]]/i.test(t)) return "";
-    t = t.replace(/\bclip\b/gi, "").replace(/\s+/g, " ").trim();
-    return t;
-  }
-
-  function matchShowcase(said) {
-    if (!showcase || !showcase.clips) return null;
-    const t = normalizeSaid(said);
-    for (const clip of showcase.clips) {
-      const triggers = clip.triggers || [];
-      if (!triggers.length) continue;
-      if (triggers.some((k) => t.includes(normalizeSaid(k)))) return clip;
-    }
-    return null;
-  }
-
-  function clipArabicText(id) {
-    if (clipTexts && clipTexts[id]) return String(clipTexts[id]);
-    return "";
-  }
-
-  function matchClipByReply(reply) {
-    if (!clipTexts) return null;
-    const t = normalizeSaid(reply);
-    if (!t || t.length < 12) return null;
-    let best = null;
-    let bestScore = 0;
-    for (const [id, text] of Object.entries(clipTexts)) {
-      if (id.startsWith("greeting_")) continue;
-      const n = normalizeSaid(text);
-      if (!n) continue;
-      // require strong overlap — avoid wrong clip
-      if (t === n) return { id, audio: "assets/talk/" + id + ".wav" };
-      const shorter = t.length < n.length ? t : n;
-      const longer = t.length < n.length ? n : t;
-      if (longer.includes(shorter) && shorter.length / longer.length > 0.72) {
-        const score = shorter.length;
-        if (score > bestScore) {
-          bestScore = score;
-          best = { id, audio: "assets/talk/" + id + ".wav" };
-        }
+      if (activeAudio) {
+        try { activeAudio.pause(); } catch (_) {}
+        activeAudio = null;
       }
-    }
-    return best;
-  }
-
-  function getClipById(id) {
-    if (!id) return null;
-    const alias = { fallback_cta: "fallback_discovery", wa_agent_pricing: "wa_agent_pricing" };
-    const resolved = alias[id] || id;
-    if (showcase && showcase.clips) {
-      const hit = showcase.clips.find((c) => c.id === resolved);
-      if (hit) return hit;
-    }
-    return { id: resolved, audio: "assets/talk/" + resolved + ".wav" };
-  }
-
-  async function playBuffer(buffer) {
-    const ctx = await ensureAudioCtx();
-    stopAudio();
-    await new Promise((resolve) => {
-      const src = ctx.createBufferSource();
-      activeSource = src;
-      src.buffer = buffer;
-      src.connect(ctx.destination);
-      src.onended = () => {
-        if (activeSource === src) activeSource = null;
-        resolve();
-      };
-      src.start(0);
-    });
-  }
-
-  async function playShowcaseClip(clip) {
-    let buf = decodedCache.get(clip.id);
-    if (!buf) {
-      const res = await fetch("/" + clip.audio.replace(/^\//, "") + "?v=" + AUDIO_V, {
-        cache: "no-cache",
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: clean }),
       });
-      if (!res.ok) throw new Error("audio missing");
-      const ctx = await ensureAudioCtx();
-      buf = await ctx.decodeAudioData((await res.arrayBuffer()).slice(0));
-      decodedCache.set(clip.id, buf);
-    }
-    await playBuffer(buf);
-  }
-
-  function pickArabicVoice() {
-    if (!("speechSynthesis" in window)) return null;
-    const voices = window.speechSynthesis.getVoices() || [];
-    const ar =
-      voices.find((v) => /^ar(-|$)/i.test(v.lang)) ||
-      voices.find((v) => /arab/i.test(v.lang + " " + v.name));
-    return ar || null;
-  }
-
-  async function speakArabicFreestyle(text) {
-    const speakText = arabicPrefer(text).slice(0, 320);
-    if (!speakText || !("speechSynthesis" in window)) return false;
-    // ensure voices loaded
-    if (!(window.speechSynthesis.getVoices() || []).length) {
-      await new Promise((r) => {
-        window.speechSynthesis.onvoiceschanged = () => r();
-        setTimeout(r, 400);
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        pushError("tts " + res.status + " " + detail.slice(0, 160));
+        return clean; // text still shown
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      await new Promise((resolve) => {
+        const audio = new Audio(url);
+        activeAudio = audio;
+        audio.onended = () => {
+          URL.revokeObjectURL(url);
+          if (activeAudio === audio) activeAudio = null;
+          resolve();
+        };
+        audio.onerror = () => {
+          URL.revokeObjectURL(url);
+          pushError("audio playback failed");
+          if (activeAudio === audio) activeAudio = null;
+          resolve();
+        };
+        const p = audio.play();
+        if (p && p.catch) p.catch((e) => { pushError(e && e.message ? e.message : e); resolve(); });
       });
-    }
-    const voice = pickArabicVoice();
-    if (!voice) return false; // refuse English voices
-    await new Promise((resolve) => {
-      const u = new SpeechSynthesisUtterance(speakText);
-      u.voice = voice;
-      u.lang = voice.lang || "ar-SA";
-      u.rate = 1.02;
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        done = true;
-        resolve();
-      };
-      u.onend = finish;
-      u.onerror = finish;
-      window.setTimeout(finish, Math.min(16000, 2000 + speakText.length * 90));
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(u);
-    });
-    return true;
-  }
-
-  async function askBrain(message) {
-    const res = await fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, history }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok && !data.reply) throw new Error(data.error || data.detail || "chat failed");
-    return (data.reply || "").toString().trim();
-  }
-
-  function stopRecognitionOnly() {
-    if (!recognition) return;
-    try {
-      recognition.onend = null;
-      recognition.onresult = null;
-      recognition.onerror = null;
-      recognition.stop();
-    } catch (_) {}
-    recognition = null;
-  }
-
-  async function endSession(ui, statusText) {
-    sessionActive = false;
-    busy = false;
-    stopRecognitionOnly();
-    stopAudio();
-    try { await playTone("end"); } catch (_) {}
-    setCallUi(ui, false);
-    setStatus(ui, statusText || "انتهت المكالمة");
-  }
-
-  async function speakReply(ui, text) {
-    setStatus(ui, "يتكلم…");
-    const clean = arabicPrefer(text);
-    // 1) If LLM reply closely matches a lady script → play lady clip
-    const byReply = matchClipByReply(clean);
-    if (byReply) {
-      try {
-        await playShowcaseClip(byReply);
-        return clipArabicText(byReply.id) || clean;
-      } catch (_) {}
-    }
-    // 2) Freestyle Arabic via browser ONLY if real Arabic voice exists
-    const ok = await speakArabicFreestyle(clean);
-    if (ok) return clean;
-    // 3) Last resort: discovery lady clip (never English gibberish)
-    const fb = getClipById("fallback_discovery") || getClipById("clarify");
-    if (fb) {
-      await playShowcaseClip(fb);
-      return clipArabicText(fb.id) || clean;
+    } catch (e) {
+      pushError(e && e.message ? e.message : e);
     }
     return clean;
   }
 
-  function armListen(ui) {
-    if (!sessionActive || busy) return;
+  async function askBrain(message) {
+    const t0 = performance.now();
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message,
+        history: session.history,
+        lead_stage: session.leadStage,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    debug.latencyMs = Math.round(performance.now() - t0);
+    debug.llmJson = data;
+    debug.lastTurnAt = new Date().toISOString();
+    renderDebug();
+    if (!res.ok && !data.reply_ar) {
+      throw new Error(data.error || data.detail || "chat failed (" + res.status + ")");
+    }
+    if (!data.reply_ar) throw new Error("chat response missing reply_ar");
+    return data;
+  }
+
+  function stopRecognitionOnly() {
+    const rec = session.recognition;
+    if (!rec) return;
+    try {
+      rec.onend = null;
+      rec.onresult = null;
+      rec.onerror = null;
+      rec.stop();
+    } catch (_) {}
+    session.recognition = null;
+  }
+
+  function armListen() {
+    if (!session.active || session.busy) return;
     if (!SpeechRecognition) {
-      setStatus(ui, "يلزم متصفح يدعم المايك مع اتصال آمن");
-      endSession(ui);
+      setState(STATES.LISTENING, "اكتب رسالتك — المتصفح لا يدعم المايك");
       return;
     }
     stopRecognitionOnly();
-    recognition = new SpeechRecognition();
+    const recognition = new SpeechRecognition();
     recognition.lang = "ar-SA";
     recognition.interimResults = false;
     recognition.continuous = false;
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
-      if (!sessionActive) return;
-      setCallUi(ui, true);
-      setStatus(ui, "أستمع…");
+      if (!session.active) return;
+      setCallUi(true);
+      setState(STATES.LISTENING);
     };
     recognition.onerror = (e) => {
       const err = e.error || "unknown";
-      if (!sessionActive) return;
+      if (!session.active) return;
       if (err === "aborted" || err === "no-speech") {
-        window.setTimeout(() => armListen(ui), 140);
+        window.setTimeout(armListen, 140);
         return;
       }
-      if (err === "not-allowed") endSession(ui, "المايك محظور");
-      else window.setTimeout(() => armListen(ui), 300);
+      if (err === "not-allowed") {
+        pushError("mic not-allowed");
+        setState(STATES.LISTENING, "المايك محظور — استخدم الكتابة");
+        return;
+      }
+      pushError("stt:" + err);
+      window.setTimeout(armListen, 300);
     };
     recognition.onend = () => {
-      if (sessionActive && !busy) window.setTimeout(() => armListen(ui), 120);
+      if (session.active && !session.busy) window.setTimeout(armListen, 120);
     };
-
-    recognition.onresult = async (event) => {
-      if (!sessionActive || busy) return;
+    recognition.onresult = (event) => {
       const said = event.results[0][0].transcript.trim();
       if (!said) return;
-      busy = true;
-      stopRecognitionOnly();
-      setCallUi(ui, true);
-
-      try {
-        await loadClipTexts();
-        await loadShowcase();
-        history.push({ role: "user", content: said });
-
-        // Optional fast greetings only — everything else is real LLM
-        const greetIds = new Set([
-          "greeting_salam", "greeting_ahlan", "greeting_alo", "greeting_sabah", "greeting_masa",
-        ]);
-        const greet = matchShowcase(said);
-        if (greet && greetIds.has(greet.id)) {
-          setStatus(ui, "يتكلم…");
-          await playShowcaseClip(greet);
-          history.push({ role: "assistant", content: clipArabicText(greet.id) || "حياك الله" });
-        } else {
-          setStatus(ui, "…");
-          let text = await askBrain(said);
-          text = arabicPrefer(text) || text;
-          const spoken = await speakReply(ui, text);
-          history.push({ role: "assistant", content: spoken || text || "تمام" });
-        }
-
-        while (history.length > 12) history.shift();
-        setStatus(ui, "أستمع…");
-      } catch (_) {
-        setStatus(ui, "تعذر الرد · حاول مرة ثانية");
-      } finally {
-        busy = false;
-        if (sessionActive) armListen(ui);
-      }
+      runTurn(said, { fromStt: true });
     };
 
-    try { recognition.start(); }
-    catch (_) { window.setTimeout(() => armListen(ui), 260); }
+    session.recognition = recognition;
+    try {
+      recognition.start();
+    } catch (_) {
+      window.setTimeout(armListen, 260);
+    }
+  }
+
+  async function runTurn(said, opts) {
+    const fromStt = !!(opts && opts.fromStt);
+    if (!said || session.busy) return;
+    if (!session.active) startSession({ skipListen: true });
+
+    session.busy = true;
+    stopRecognitionOnly();
+    debug.transcript = said;
+    debug.llmJson = null;
+    debug.latencyMs = null;
+    if (ui) ui.transcript.textContent = "أنت: " + said;
+    renderDebug();
+
+    if (fromStt) setState(STATES.TRANSCRIBING);
+    else setState(STATES.THINKING);
+
+    session.history.push({ role: "user", content: said });
+
+    try {
+      if (fromStt) setState(STATES.THINKING);
+      clearThinkingTimer();
+      session.thinkingTimer = window.setTimeout(() => {
+        pushError("thinking timeout");
+        setState(STATES.ERROR, "انتهى وقت التفكير");
+      }, THINKING_MS);
+
+      const pack = await askBrain(said);
+      clearThinkingTimer();
+
+      if (pack.lead_stage) session.leadStage = pack.lead_stage;
+      setState(STATES.SPEAKING);
+      const spoken = await speakReply(pack.reply_ar);
+      session.history.push({ role: "assistant", content: spoken || pack.reply_ar });
+      while (session.history.length > HISTORY_MAX) session.history.shift();
+
+      session.busy = false;
+      if (session.active) {
+        setState(STATES.LISTENING);
+        armListen();
+      } else {
+        setState(STATES.IDLE);
+      }
+    } catch (err) {
+      clearThinkingTimer();
+      pushError(err && err.message ? err.message : err);
+      setState(STATES.ERROR);
+      session.busy = false;
+      if (session.active) {
+        window.setTimeout(() => {
+          if (session.active && !session.busy) {
+            setState(STATES.LISTENING);
+            armListen();
+          }
+        }, 800);
+      }
+    }
+  }
+
+  function startSession(opts) {
+    const skipListen = !!(opts && opts.skipListen);
+    session.active = true;
+    session.busy = false;
+    session.leadStage = "explore";
+    session.history.length = 0;
+    debug.transcript = "";
+    debug.llmJson = null;
+    debug.latencyMs = null;
+    debug.errors = [];
+    if (ui) {
+      ui.transcript.textContent = "";
+      ui.reply.textContent = "";
+    }
+    setCallUi(true);
+    setState(STATES.LISTENING);
+    if (!skipListen) armListen();
+  }
+
+  function endSession(statusText) {
+    session.active = false;
+    session.busy = false;
+    clearThinkingTimer();
+    stopRecognitionOnly();
+    setCallUi(false);
+    setState(STATES.IDLE, statusText || "انتهت المكالمة");
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    const ui = createWidget();
-    setCallUi(ui, false);
-    loadShowcase().catch(() => {});
-    loadClipTexts().catch(() => {});
-    if ("speechSynthesis" in window) {
-      // warm voices list
-      window.speechSynthesis.getVoices();
-      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-    }
-    ui.btn.addEventListener("click", async () => {
-      if (sessionActive) {
-        await endSession(ui, "انتهت المكالمة");
-        return;
-      }
-      sessionActive = true;
-      history.length = 0;
-      await ensureAudioCtx();
-      setCallUi(ui, true);
-      setStatus(ui, "جاري الاتصال…");
-      try { await playTone("start"); } catch (_) {}
-      armListen(ui);
+    injectStagingCss();
+    ui = createWidget();
+    setCallUi(false);
+    setState(STATES.IDLE);
+    renderDebug();
+
+    ui.btn.addEventListener("click", () => {
+      if (session.active) endSession("انتهت المكالمة");
+      else startSession();
+    });
+
+    ui.form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const said = String(ui.input.value || "").trim();
+      if (!said) return;
+      ui.input.value = "";
+      runTurn(said, { fromStt: false });
+    });
+
+    document.querySelectorAll("[data-voice-demo-open]").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        if (ui && ui.root) {
+          ui.root.classList.add("is-open");
+          ui.root.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+        if (!session.active) startSession();
+      });
     });
   });
 })();
