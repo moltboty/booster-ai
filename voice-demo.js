@@ -35,6 +35,8 @@
     history: [],
     recognition: null,
     thinkingTimer: 0,
+    turnId: 0,
+    controller: null,
   };
 
   const debug = {
@@ -121,7 +123,7 @@
           btn,
           form,
           el("p", { className: "voice-demo-note" }, [
-            "مسار موحّد: /api/chat → Lady عبر /api/tts · بدون speechSynthesis",
+            "تحدث أو اكتب، وسأرد عليك بالصوت والنص.",
           ]),
         ]),
       ]
@@ -170,6 +172,7 @@
       ui.root.dataset.state = session.state;
       ui.root.classList.toggle("is-busy", session.busy);
       ui.root.classList.toggle("is-in-session", session.active);
+      ui.send.disabled = session.busy;
     }
     setStatus(statusText || STATUS_AR[session.state] || session.state);
     renderDebug();
@@ -202,55 +205,60 @@
    */
   let activeAudio = null;
 
-  async function speakReply(text) {
+  async function speakReply(text, signal) {
     const clean = String(text || "").trim();
     if (ui) ui.reply.textContent = clean;
-    if (!clean) return clean;
-
-    // Never speechSynthesis. Lady only via /api/tts → Fasee7.
+    if (!clean) return;
+    const controller = session.controller;
+    const timeout = window.setTimeout(() => controller.abort(), 150000);
     try {
-      if (activeAudio) {
-        try { activeAudio.pause(); } catch (_) {}
-        activeAudio = null;
-      }
       const res = await fetch("/api/tts", {
+        signal,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: clean }),
       });
-      if (!res.ok) {
-        const detail = await res.text().catch(() => "");
-        pushError("tts " + res.status + " " + detail.slice(0, 160));
-        return clean; // text still shown
-      }
+      if (!res.ok) throw new Error("tts " + res.status);
       const blob = await res.blob();
+      signal.throwIfAborted();
+      if (!blob.size || !blob.type.startsWith("audio/")) throw new Error("Invalid audio response");
+      setStatus("تتحدث…");
       const url = URL.createObjectURL(blob);
-      await new Promise((resolve) => {
+      await new Promise((resolve, reject) => {
         const audio = new Audio(url);
         activeAudio = audio;
-        audio.onended = () => {
+        let done = false;
+        const finish = (error) => {
+          if (done) return;
+          done = true;
+          signal.removeEventListener("abort", cancel);
+          audio.onended = null;
+          audio.onerror = null;
+          audio.pause();
+          audio.removeAttribute("src");
+          audio.load();
           URL.revokeObjectURL(url);
           if (activeAudio === audio) activeAudio = null;
-          resolve();
+          if (error) reject(error);
+          else resolve();
         };
-        audio.onerror = () => {
-          URL.revokeObjectURL(url);
-          pushError("audio playback failed");
-          if (activeAudio === audio) activeAudio = null;
-          resolve();
-        };
-        const p = audio.play();
-        if (p && p.catch) p.catch((e) => { pushError(e && e.message ? e.message : e); resolve(); });
+        const cancel = () => finish(new Error("Audio cancelled"));
+        signal.addEventListener("abort", cancel, { once: true });
+        audio.onended = () => finish();
+        audio.onerror = () => finish(new Error("Audio playback failed"));
+        if (signal.aborted) { cancel(); return; }
+        try { Promise.resolve(audio.play()).catch(finish); }
+        catch (error) { finish(error); }
       });
-    } catch (e) {
-      pushError(e && e.message ? e.message : e);
+    } finally {
+      window.clearTimeout(timeout);
     }
-    return clean;
   }
 
-  async function askBrain(message) {
+  async function askBrain(message, signal) {
     const t0 = performance.now();
     const res = await fetch("/api/chat", {
+      signal,
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -264,7 +272,7 @@
     debug.llmJson = data;
     debug.lastTurnAt = new Date().toISOString();
     renderDebug();
-    if (!res.ok && !data.reply_ar) {
+    if (!res.ok) {
       throw new Error(data.error || data.detail || "chat failed (" + res.status + ")");
     }
     if (!data.reply_ar) throw new Error("chat response missing reply_ar");
@@ -309,6 +317,7 @@
         return;
       }
       if (err === "not-allowed") {
+        stopRecognitionOnly();
         pushError("mic not-allowed");
         setState(STATES.LISTENING, "المايك محظور — استخدم الكتابة");
         return;
@@ -339,34 +348,38 @@
     if (!session.active) startSession({ skipListen: true });
 
     session.busy = true;
+    const turnId = ++session.turnId;
+    const controller = new AbortController();
+    session.controller = controller;
     stopRecognitionOnly();
     debug.transcript = said;
     debug.llmJson = null;
     debug.latencyMs = null;
     if (ui) ui.transcript.textContent = "أنت: " + said;
+    if (ui) ui.reply.textContent = "";
     renderDebug();
 
     if (fromStt) setState(STATES.TRANSCRIBING);
     else setState(STATES.THINKING);
 
-    session.history.push({ role: "user", content: said });
-
     try {
       if (fromStt) setState(STATES.THINKING);
       clearThinkingTimer();
       session.thinkingTimer = window.setTimeout(() => {
-        pushError("thinking timeout");
-        setState(STATES.ERROR, "انتهى وقت التفكير");
+        controller.abort();
       }, THINKING_MS);
 
-      const pack = await askBrain(said);
+      const pack = await askBrain(said, controller.signal);
+      if (turnId !== session.turnId) return;
       clearThinkingTimer();
 
-      if (pack.lead_stage) session.leadStage = pack.lead_stage;
-      setState(STATES.SPEAKING);
-      const spoken = await speakReply(pack.reply_ar);
-      session.history.push({ role: "assistant", content: spoken || pack.reply_ar });
+      session.history.push({ role: "user", content: said });
+      session.history.push({ role: "assistant", content: pack.reply_ar });
       while (session.history.length > HISTORY_MAX) session.history.shift();
+      if (pack.lead_stage) session.leadStage = pack.lead_stage;
+      setState(STATES.SPEAKING, "أجهز الرد الصوتي…");
+      await speakReply(pack.reply_ar, controller.signal);
+      if (turnId !== session.turnId) return;
 
       session.busy = false;
       if (session.active) {
@@ -376,18 +389,13 @@
         setState(STATES.IDLE);
       }
     } catch (err) {
+      if (turnId !== session.turnId) return;
       clearThinkingTimer();
       pushError(err && err.message ? err.message : err);
-      setState(STATES.ERROR);
       session.busy = false;
-      if (session.active) {
-        window.setTimeout(() => {
-          if (session.active && !session.busy) {
-            setState(STATES.LISTENING);
-            armListen();
-          }
-        }, 800);
-      }
+      setState(STATES.ERROR, ui.reply.textContent
+        ? "تعذر تشغيل الصوت. الرد مكتوب هنا — جرّب إرسال رسالة ثانية."
+        : "تعذر الاتصال بالمساعد. جرّب إرسال الرسالة مرة ثانية.");
     }
   }
 
@@ -411,6 +419,9 @@
   }
 
   function endSession(statusText) {
+    session.turnId++;
+    if (session.controller) session.controller.abort();
+    session.controller = null;
     session.active = false;
     session.busy = false;
     clearThinkingTimer();
@@ -434,7 +445,7 @@
     ui.form.addEventListener("submit", (e) => {
       e.preventDefault();
       const said = String(ui.input.value || "").trim();
-      if (!said) return;
+      if (!said || session.busy) return;
       ui.input.value = "";
       runTurn(said, { fromStt: false });
     });
