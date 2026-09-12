@@ -74,7 +74,7 @@
   let clipTexts = null;
   const decodedCache = new Map();
   const history = [];
-  const AUDIO_V = "fasee7lady3";
+  const AUDIO_V = "fasee7lady4";
 
   function setStatus(ui, text) {
     ui.status.textContent = text;
@@ -402,30 +402,39 @@
 
       try {
         await loadClipTexts();
+        await loadShowcase();
+        history.push({ role: "user", content: said });
+
+        // Greetings only: instant lady clip. Everything else = live brain (multi-intent).
+        const greetIds = new Set([
+          "greeting_salam",
+          "greeting_ahlan",
+          "greeting_alo",
+          "greeting_sabah",
+          "greeting_masa",
+        ]);
         const clip = matchShowcase(said);
-        if (clip) {
+        if (clip && greetIds.has(clip.id)) {
           setStatus(ui, "يتكلم…");
           await playShowcaseClip(clip);
-          const ar = clipArabicText(clip.id) || "تم";
-          history.push({ role: "user", content: said });
+          const ar = clipArabicText(clip.id) || "حياك الله";
           history.push({ role: "assistant", content: ar });
         } else {
           setStatus(ui, "…");
           let text = await askBrain(said);
           text = arabicOnly(text) || text;
-          history.push({ role: "user", content: said });
           const spoken = await speakReply(ui, text);
           history.push({
             role: "assistant",
             content: spoken || arabicOnly(text) || "تمام",
           });
         }
-        while (history.length > 8) history.shift();
-        // never keep english/clip markers in history
+        while (history.length > 12) history.shift();
         for (let i = 0; i < history.length; i++) {
           if (history[i].role === "assistant") {
             const c = arabicOnly(history[i].content);
             if (c) history[i].content = c;
+            else if (/clip/i.test(String(history[i].content))) history[i].content = "تمام";
           }
         }
         setStatus(ui, "أستمع…");
