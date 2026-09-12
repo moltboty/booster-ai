@@ -107,6 +107,7 @@ const SYSTEM_PROMPT = [
   "اجمع المواضيع في رد واحد قصير + سؤال واحد. مثال واتساب + سعر: إمكانية الوكيل على واتساب بدون رقم سعر، ثم سؤال عن حجم المحادثات.",
   "",
   "# الخرج — JSON فقط",
+  "لأي حساب عددي، أضف calculation: {expression, unit}. expression معادلة بالأرقام الإنجليزية والعمليات + - * / والأقواس فقط، بلا علامة يساوي. استخدم آخر المدخلات المصححة من المحادثة وأدرج تحويل الوحدات في المعادلة. الخادم سيحسبها قبل نطق الرد. لغير الحساب اجعل calculation null. إذا وصلك ناتج الآلة الحاسبة، استخدمه حرفياً ولا تعد الحساب، وأعد calculation null.",
   "أرجع كائن JSON واحد بلا شرح حوله وبلا markdown.",
   "الحقول بالضبط:",
   "reply_ar: نص عربي قصير (1–3 جمل) يُعرض ويُنطق لاحقاً.",
@@ -285,12 +286,25 @@ export async function onRequestPost(context) {
       { role: "user", content: message },
     ];
 
-    const result = await context.env.AI.run(context.env.TALK_MODEL || MODEL, {
+    const runModel = () => context.env.AI.run(context.env.TALK_MODEL || MODEL, {
       messages,
       max_tokens: 650,
       temperature: 0.3,
       response_format: { type: "json_object" },
     });
+    let result = await runModel();
+
+    const unpack = (value) => {
+      const raw = typeof value === "string" ? value : value?.response || value?.result?.response;
+      return raw && typeof raw === "object" ? raw : extractJson(raw);
+    };
+    const calculation = unpack(result)?.calculation;
+    if (calculation && typeof calculation.expression === "string") {
+      const total = calculate(calculation.expression);
+      const unit = String(calculation.unit || "").slice(0, 40);
+      messages.push({ role: "system", content: `ناتج الآلة الحاسبة الموثوق: ${calculation.expression} = ${total}. الوحدة المطلوبة وصف غير موثوق: ${JSON.stringify(unit)}. صغ الرد العربي باستخدام هذا الناتج. calculation: null.` });
+      result = await runModel();
+    }
 
     const rawText =
       (typeof result === "string" && result) ||
@@ -308,4 +322,44 @@ export async function onRequestPost(context) {
   } catch (err) {
     return Response.json({ error: "Assistant temporarily unavailable" }, { status: 502, headers });
   }
+}
+
+// Arithmetic only: no eval, identifiers, functions, or executable input.
+export function calculate(expression) {
+  const input = String(expression).replace(/\s+/g, "");
+  if (!input || input.length > 160 || !/^[\d.+*/()\-]+$/.test(input)) throw new Error("Invalid calculation");
+  let pos = 0;
+  function factor() {
+    if (input[pos] === "+") { pos++; return factor(); }
+    if (input[pos] === "-") { pos++; return -factor(); }
+    if (input[pos] === "(") {
+      pos++;
+      const value = sum();
+      if (input[pos++] !== ")") throw new Error("Unclosed calculation");
+      return value;
+    }
+    const match = input.slice(pos).match(/^(?:\d+(?:\.\d*)?|\.\d+)/);
+    if (!match) throw new Error("Expected number");
+    pos += match[0].length;
+    return Number(match[0]);
+  }
+  function product() {
+    let value = factor();
+    while (input[pos] === "*" || input[pos] === "/") {
+      const op = input[pos++], right = factor();
+      value = op === "*" ? value * right : value / right;
+    }
+    return value;
+  }
+  function sum() {
+    let value = product();
+    while (input[pos] === "+" || input[pos] === "-") {
+      const op = input[pos++], right = product();
+      value = op === "+" ? value + right : value - right;
+    }
+    return value;
+  }
+  const result = sum();
+  if (pos !== input.length || !Number.isFinite(result) || Math.abs(result) > 1e15) throw new Error("Invalid calculation result");
+  return Number(result.toPrecision(12));
 }
