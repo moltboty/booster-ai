@@ -51,7 +51,7 @@ test('TTS rejects HTML masquerading as a successful upstream response', async ()
   finally {globalThis.fetch=original;}
 });
 
-function widget(fetchImpl) {
+function widget(fetchImpl, SpeechRecognition) {
   const timers=new Map(); let timerId=0;
   const ui={root:{dataset:{},classList:{toggle(){}}},btn:{setAttribute(){},classList:{toggle(){}}},btnLabel:{},send:{},status:{},transcript:{},reply:{textContent:''}};
   const sounds=[]; let revoked=0;
@@ -62,7 +62,7 @@ function widget(fetchImpl) {
     removeAttribute(){}
     load(){}
   }
-  const context=vm.createContext({window:{location:{search:''},setTimeout:(f,ms)=>{timers.set(++timerId,{f,ms});return timerId;},clearTimeout:id=>timers.delete(id)},document:{addEventListener(){}},URLSearchParams,AbortController,performance,fetch:fetchImpl,Audio,URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){revoked++;}},console});
+  const context=vm.createContext({window:{SpeechRecognition,location:{search:''},setTimeout:(f,ms)=>{timers.set(++timerId,{f,ms});return timerId;},clearTimeout:id=>timers.delete(id)},document:{addEventListener(){}},URLSearchParams,AbortController,performance,fetch:fetchImpl,Audio,URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){revoked++;}},console});
   let source=fs.readFileSync(new URL('../voice-demo.js',import.meta.url),'utf8');
   source=source.replace(/\}\)\(\);\s*$/, 'globalThis.api={session,runTurn,endSession,startSession,setUi(value){ui=value;}};})();');
   vm.runInContext(source,context);
@@ -70,6 +70,36 @@ function widget(fetchImpl) {
   return {...context.api,ui,timers,sounds,get revoked(){return revoked;}};
 }
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
+
+test('no-speech plus onend schedules one microphone restart; hangup cancels it',()=>{
+  const instances=[];
+  class Recognition { constructor(){instances.push(this);} start(){this.onstart?.();} stop(){} }
+  const w=widget(async()=>Response.json(pack),Recognition);
+  w.startSession();
+  instances[0].onerror({error:'no-speech'});
+  instances[0].onend();
+  assert.equal(w.timers.size,1);
+  const [id,timer]=[...w.timers][0];w.timers.delete(id);timer.f();
+  assert.equal(instances.length,2);
+  assert.equal(w.timers.size,0);
+  instances[1].onend();
+  w.endSession();
+  assert.equal(w.timers.size,0);
+});
+
+test('failed audio reopens microphone and accepts a subsequent spoken turn',async()=>{
+  const instances=[];let chats=0;
+  class Recognition { constructor(){instances.push(this);} start(){this.onstart?.();} stop(){} }
+  const w=widget(async url=>url==='/api/chat'?(chats++,Response.json(pack)):new Response('',{status:503}),Recognition);
+  await w.runTurn('مرحبا');
+  const entry=[...w.timers].find(([,t])=>t.ms===500);
+  assert.ok(entry);w.timers.delete(entry[0]);entry[1].f();
+  assert.equal(w.session.state,'LISTENING');
+  assert.match(w.ui.status.textContent,/تعذر تشغيل الصوت/);
+  instances.at(-1).onresult({results:[[{transcript:'وش خدماتكم'}]]});
+  for(let i=0;i<10;i++)await tick();
+  assert.equal(chats,2);assert.equal(w.session.busy,false);
+});
 
 test('ending a pending call prevents a late response from speaking or altering a new call',async()=>{
   let resolveChat; let ttsCalls=0;
