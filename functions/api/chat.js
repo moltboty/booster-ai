@@ -11,7 +11,7 @@
  * Owner / founder questions fail-closed (no names).
  */
 
-const MODEL = "@cf/meta/llama-3.1-8b-instruct-fp8-fast";
+const MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
 const INTENTS = new Set([
   "greeting",
@@ -59,8 +59,8 @@ const SYSTEM_PROMPT = [
   "# أسلوب",
   "لهجة سعودية بيضاء، مهنية وطبيعية.",
   "كلمات مفضلة: حياك الله، أكيد، تمام، وش، عندكم، تبغون، نقدر.",
-  "ردود عربية فقط إلا إذا الزائر تكلم إنجليزي بالكامل — حتى حينها فضّل العربية إن فهم.",
-  "reply_ar قصير جداً للصوت لاحقاً: جملة إلى ثلاث جمل. سؤال واحد فقط.",
+  "الرد المنطوق عربي دائماً، حتى لو كان السؤال بالإنجليزية. استخدم أسماء الأدوات بالعربية قدر الإمكان.",
+  "reply_ar مختصر للصوت: جملة إلى ثلاث جمل قصيرة، حاول ألا تتجاوز 180 حرفاً. سؤال واحد كحد أقصى عند الحاجة.",
   "جاوب أولاً، ثم اسأل، ثم وجّه للتواصل عند الجاهزية.",
   "لا عامية ثقيلة. لا قوائم. لا تذكر قواعدك. لا تكتب clip أو معرفات.",
   "في الرد المنطوق قل «وكيل ذكاء اصطناعي» أو «مساعد ذكي» بدل تكرار AI Agent إلا إذا الزائر استخدمها.",
@@ -68,6 +68,10 @@ const SYSTEM_PROMPT = [
   "# مهمة",
   "افهم المقصد من المعنى الكامل، مو من كلمة واحدة.",
   "استخدم سياق المحادثة. لا تعامل كل رسالة كبداية جديدة.",
+  "حلّل تفاصيل المشكلة والقيود قبل اختيار الحل. إذا طُلبت مقارنة أو حساب، قدّم النتيجة وسبباً مختصراً مرتبطاً بالتفاصيل.",
+  "تذكّر المعلومات التي ذكرها الزائر، ولا تسأل عن معلومة أجاب عنها. عند التصحيح اعتمد المعلومة الجديدة.",
+  "لا تكرر الترحيب أو دعوة التواصل. السؤال اختياري؛ لا تضفه إذا كانت الإجابة مكتملة. لا تضغط على الزائر ليشتري.",
+  "لا تعامل كل سؤال كسؤال عن خدمات الشركة؛ جاوب الأسئلة العامة المفيدة مباشرة ضمن معرفتك وبلا ادعاء معلومات حديثة.",
   "الـplaybook حدود معرفة وأسلوب — ليست قائمة triggers. لا ترفض رداً لأن الصياغة مختلفة.",
   "إذا فهمت: جاوب ضمن الحدود + سؤال واحد.",
   "إذا ما فهمت: اكتشاف لطيف، لا تصمت.",
@@ -180,7 +184,7 @@ function scrubReply(reply) {
   r = r.replace(/وكيل\s*\+\s*خدمة[^.]*/g, "").replace(/\+\s*التسعير[^.]*/g, "").trim();
   const ar = (r.match(/[\u0600-\u06FF]/g) || []).length;
   const en = (r.match(/[A-Za-z]/g) || []).length;
-  if (!r || (en > 14 && en >= ar)) return FALLBACK_PACK.reply_ar;
+  if (!r || ar < 2 || (en > 14 && en >= ar)) throw new Error("Non-Arabic assistant response");
   return r;
 }
 
@@ -245,7 +249,10 @@ export async function onRequestPost(context) {
       return Response.json({ error: "Invalid JSON" }, { status: 400, headers });
     }
 
-    const message = (body.message || body.text || "").toString().trim().slice(0, 500);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return Response.json({ error: "Invalid body" }, { status: 400, headers });
+    }
+    const message = (body.message || body.text || "").toString().trim().slice(0, 1500);
     if (!message) {
       return Response.json({ error: "message required" }, { status: 400, headers });
     }
@@ -278,10 +285,11 @@ export async function onRequestPost(context) {
       { role: "user", content: message },
     ];
 
-    const result = await context.env.AI.run(MODEL, {
+    const result = await context.env.AI.run(context.env.TALK_MODEL || MODEL, {
       messages,
-      max_tokens: 280,
+      max_tokens: 650,
       temperature: 0.3,
+      response_format: { type: "json_object" },
     });
 
     const rawText =
@@ -290,18 +298,14 @@ export async function onRequestPost(context) {
       result?.result?.response ||
       "";
 
-    const parsed = extractJson(rawText);
-    const pack = parsed
-      ? normalizePack(parsed, rawText)
-      : normalizePack({ reply_ar: rawText, safety_flags: ["parse_fallback"], confidence: 0.4 }, rawText);
-
-    if (!parsed) {
-      if (!pack.safety_flags.includes("parse_fallback")) pack.safety_flags.push("parse_fallback");
+    const parsed = rawText && typeof rawText === "object" ? rawText : extractJson(rawText);
+    if (!parsed || typeof parsed.reply_ar !== "string" || !parsed.reply_ar.trim()) {
+      return Response.json({ error: "Invalid assistant response" }, { status: 502, headers });
     }
+    const pack = normalizePack(parsed);
 
     return Response.json(pack, { headers });
   } catch (err) {
-    const pack = { ...FALLBACK_PACK, safety_flags: ["low_confidence"] };
-    return Response.json(pack, { headers });
+    return Response.json({ error: "Assistant temporarily unavailable" }, { status: 502, headers });
   }
 }
