@@ -37,6 +37,8 @@
     thinkingTimer: 0,
     turnId: 0,
     controller: null,
+    listenTimer: 0,
+    recoveryMessage: "",
   };
 
   const debug = {
@@ -280,15 +282,27 @@
   }
 
   function stopRecognitionOnly() {
+    window.clearTimeout(session.listenTimer);
+    session.listenTimer = 0;
     const rec = session.recognition;
     if (!rec) return;
     try {
       rec.onend = null;
+      rec.onstart = null;
       rec.onresult = null;
       rec.onerror = null;
       rec.stop();
     } catch (_) {}
     session.recognition = null;
+  }
+
+  function scheduleListen(delay = 300) {
+    window.clearTimeout(session.listenTimer);
+    if (!session.active || session.busy) return;
+    session.listenTimer = window.setTimeout(() => {
+      session.listenTimer = 0;
+      armListen();
+    }, delay);
   }
 
   function armListen() {
@@ -305,15 +319,14 @@
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
-      if (!session.active) return;
+      if (!session.active || session.busy || session.recognition !== recognition) return;
       setCallUi(true);
-      setState(STATES.LISTENING);
+      setState(STATES.LISTENING, session.recoveryMessage);
     };
     recognition.onerror = (e) => {
       const err = e.error || "unknown";
-      if (!session.active) return;
+      if (!session.active || session.recognition !== recognition) return;
       if (err === "aborted" || err === "no-speech") {
-        window.setTimeout(armListen, 140);
         return;
       }
       if (err === "not-allowed") {
@@ -323,12 +336,15 @@
         return;
       }
       pushError("stt:" + err);
-      window.setTimeout(armListen, 300);
+      setStatus("تعذر سماعك — أحاول تشغيل المايك من جديد…");
     };
     recognition.onend = () => {
-      if (session.active && !session.busy) window.setTimeout(armListen, 120);
+      if (session.recognition !== recognition) return;
+      session.recognition = null;
+      scheduleListen();
     };
     recognition.onresult = (event) => {
+      if (session.recognition !== recognition || session.busy || !session.active) return;
       const said = event.results[0][0].transcript.trim();
       if (!said) return;
       runTurn(said, { fromStt: true });
@@ -337,8 +353,10 @@
     session.recognition = recognition;
     try {
       recognition.start();
-    } catch (_) {
-      window.setTimeout(armListen, 260);
+    } catch (error) {
+      stopRecognitionOnly();
+      pushError("mic start: " + error.message);
+      scheduleListen(1000);
     }
   }
 
@@ -348,6 +366,7 @@
     if (!session.active) startSession({ skipListen: true });
 
     session.busy = true;
+    session.recoveryMessage = "";
     const turnId = ++session.turnId;
     const controller = new AbortController();
     session.controller = controller;
@@ -393,9 +412,11 @@
       clearThinkingTimer();
       pushError(err && err.message ? err.message : err);
       session.busy = false;
-      setState(STATES.ERROR, ui.reply.textContent
-        ? "تعذر تشغيل الصوت. الرد مكتوب هنا — جرّب إرسال رسالة ثانية."
-        : "تعذر الاتصال بالمساعد. جرّب إرسال الرسالة مرة ثانية.");
+      session.recoveryMessage = ui.reply.textContent
+        ? "تعذر تشغيل الصوت. الرد مكتوب هنا — تقدر تتكلم أو تكتب من جديد."
+        : "تعذر الاتصال بالمساعد — تقدر تتكلم أو تكتب من جديد.";
+      setState(STATES.ERROR, session.recoveryMessage);
+      if (SpeechRecognition) scheduleListen(500);
     }
   }
 
@@ -405,6 +426,7 @@
     session.busy = false;
     session.leadStage = "explore";
     session.history.length = 0;
+    session.recoveryMessage = "";
     debug.transcript = "";
     debug.llmJson = null;
     debug.latencyMs = null;
