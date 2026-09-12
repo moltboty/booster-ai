@@ -82,6 +82,14 @@ export async function onRequestPost(context) {
       result?.result?.response ||
       "";
     reply = String(reply).trim().slice(0, 500);
+    // Never leak English markers / internal ids into spoken replies
+    reply = reply.replace(/\[\s*clip\s*:[^\]]*\]/gi, "").replace(/\bclip\s*[\w_-]*/gi, "").trim();
+    const arChars = (reply.match(/[\u0600-\u06FF]/g) || []).length;
+    const enChars = (reply.match(/[A-Za-z]/g) || []).length;
+    if (!reply || (enChars > 0 && enChars >= arChars)) {
+      reply =
+        "أكيد، بس وضّح لي أكثر وش حاب تعرف عن بوستر AI؟";
+    }
     if (!reply) {
       reply =
         "ما أبغى أعطيك معلومة غير دقيقة. الأفضل نخلي الفريق المختص يتواصل معك بخصوص هالنقطة.";
