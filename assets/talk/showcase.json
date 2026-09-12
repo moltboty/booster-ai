@@ -1,7 +1,7 @@
 {
   "mode": "showcase",
-  "fallback": "cta",
-  "cta_clip_id": "fallback_cta",
+  "fallback": "discovery",
+  "cta_clip_id": "fallback_discovery",
   "clips": [
     {
       "id": "greeting_sabah",
@@ -535,6 +535,11 @@
     {
       "id": "fallback_cta",
       "audio": "assets/talk/fallback_cta.wav",
+      "triggers": []
+    },
+    {
+      "id": "fallback_discovery",
+      "audio": "assets/talk/fallback_discovery.wav",
       "triggers": []
     }
   ]
