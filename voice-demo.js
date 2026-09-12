@@ -22,49 +22,31 @@
       className: "voice-demo voice-demo--audio-only",
       "aria-label": "مساعد صوتي",
     });
-
     const status = el(
       "p",
-      {
-        className: "voice-demo-status",
-        id: "voice-demo-status",
-        "aria-live": "polite",
-      },
+      { className: "voice-demo-status", id: "voice-demo-status", "aria-live": "polite" },
       ["اضغط للاتصال بالمساعد"]
     );
-
-    const btnLabel = el("span", { className: "voice-demo-btn-label" }, [
-      "ابدأ المكالمة",
-    ]);
+    const btnLabel = el("span", { className: "voice-demo-btn-label" }, ["ابدأ المكالمة"]);
     const btn = el(
       "button",
-      {
-        type: "button",
-        className: "voice-demo-btn",
-        id: "voice-demo-btn",
-        "aria-pressed": "false",
-      },
+      { type: "button", className: "voice-demo-btn", id: "voice-demo-btn", "aria-pressed": "false" },
       [btnLabel]
     );
-
     root.append(
       el("div", { className: "voice-demo-card" }, [
         el("p", { className: "voice-demo-label" }, ["مكالمة صوتية"]),
         el("h2", { className: "voice-demo-title" }, ["مساعد بوستر"]),
         status,
         btn,
-        el("p", { className: "voice-demo-note" }, [
-          "أخضر للاتصال · أحمر للإنهاء",
-        ]),
+        el("p", { className: "voice-demo-note" }, ["أخضر للاتصال · أحمر للإنهاء"]),
       ])
     );
-
     document.body.appendChild(root);
     return { btn, btnLabel, status };
   }
 
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   let recognition = null;
   let sessionActive = false;
   let busy = false;
@@ -74,7 +56,7 @@
   let clipTexts = null;
   const decodedCache = new Map();
   const history = [];
-  const AUDIO_V = "fasee7lady5";
+  const AUDIO_V = "fasee7lady6";
 
   function setStatus(ui, text) {
     ui.status.textContent = text;
@@ -92,16 +74,13 @@
       const AC = window.AudioContext || window.webkitAudioContext;
       audioCtx = new AC();
     }
-    if (audioCtx.state === "suspended")
-      return audioCtx.resume().then(() => audioCtx);
+    if (audioCtx.state === "suspended") return audioCtx.resume().then(() => audioCtx);
     return Promise.resolve(audioCtx);
   }
 
   function stopAudio() {
     if (activeSource) {
-      try {
-        activeSource.stop();
-      } catch (_) {}
+      try { activeSource.stop(); } catch (_) {}
       activeSource = null;
     }
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
@@ -115,7 +94,6 @@
     const osc = ctx.createOscillator();
     osc.type = "sine";
     if (kind === "start") {
-      // soft two-note connect
       osc.frequency.setValueAtTime(880, now);
       osc.frequency.setValueAtTime(1175, now + 0.09);
       gain.gain.setValueAtTime(0.0001, now);
@@ -126,7 +104,6 @@
       osc.stop(now + 0.24);
       await new Promise((r) => setTimeout(r, 260));
     } else {
-      // lower end-call tone
       osc.frequency.setValueAtTime(660, now);
       osc.frequency.setValueAtTime(440, now + 0.1);
       gain.gain.setValueAtTime(0.0001, now);
@@ -146,23 +123,17 @@
       if (!res.ok) return null;
       showcase = await res.json();
       return showcase;
-    } catch (_) {
-      return null;
-    }
+    } catch (_) { return null; }
   }
 
   async function loadClipTexts() {
     if (clipTexts) return clipTexts;
     try {
-      const res = await fetch("/assets/talk/clips-text.json", {
-        cache: "no-cache",
-      });
+      const res = await fetch("/assets/talk/clips-text.json", { cache: "no-cache" });
       if (!res.ok) return null;
       clipTexts = await res.json();
       return clipTexts;
-    } catch (_) {
-      return null;
-    }
+    } catch (_) { return null; }
   }
 
   function normalizeSaid(said) {
@@ -177,25 +148,12 @@
       .trim();
   }
 
-  function arabicOnly(text) {
-    const t = String(text || "").trim();
+  function arabicPrefer(text) {
+    let t = String(text || "").trim();
     if (!t) return "";
-    // drop internal markers / English clip ids
     if (/\[?\s*clip\s*[:\]]/i.test(t)) return "";
-    if (/^[\[\(]?clip\b/i.test(t)) return "";
-    const letters = t.replace(/[\d\s\W_]+/g, "");
-    if (!letters) return t;
-    const ar = (t.match(/[\u0600-\u06FF]/g) || []).length;
-    const en = (t.match(/[A-Za-z]/g) || []).length;
-    if (en > 0 && en >= ar) return "";
-    // strip leftover latin words but keep Arabic
-    const cleaned = t
-      .replace(/\bclip\b/gi, "")
-      .replace(/\bservices?\b/gi, "")
-      .replace(/\b[A-Za-z]{2,}\b/g, "")
-      .replace(/\s+/g, " ")
-      .trim();
-    return cleaned;
+    t = t.replace(/\bclip\b/gi, "").replace(/\s+/g, " ").trim();
+    return t;
   }
 
   function matchShowcase(said) {
@@ -215,22 +173,24 @@
   }
 
   function matchClipByReply(reply) {
-    if (!clipTexts || !showcase || !showcase.clips) return null;
-    const t = normalizeSaid(arabicOnly(reply) || reply);
-    if (!t) return null;
+    if (!clipTexts) return null;
+    const t = normalizeSaid(reply);
+    if (!t || t.length < 12) return null;
     let best = null;
-    let bestLen = 0;
+    let bestScore = 0;
     for (const [id, text] of Object.entries(clipTexts)) {
+      if (id.startsWith("greeting_")) continue;
       const n = normalizeSaid(text);
       if (!n) continue;
-      if (t === n || t.includes(n) || n.includes(t)) {
-        if (n.length > bestLen) {
-          bestLen = n.length;
-          best =
-            showcase.clips.find((c) => c.id === id) || {
-              id,
-              audio: "assets/talk/" + id + ".wav",
-            };
+      // require strong overlap — avoid wrong clip
+      if (t === n) return { id, audio: "assets/talk/" + id + ".wav" };
+      const shorter = t.length < n.length ? t : n;
+      const longer = t.length < n.length ? n : t;
+      if (longer.includes(shorter) && shorter.length / longer.length > 0.72) {
+        const score = shorter.length;
+        if (score > bestScore) {
+          bestScore = score;
+          best = { id, audio: "assets/talk/" + id + ".wav" };
         }
       }
     }
@@ -239,11 +199,7 @@
 
   function getClipById(id) {
     if (!id) return null;
-    // Temporary audio alias until dedicated clip is generated
-    const alias = {
-      wa_agent_pricing: "customer_service",
-      fallback_cta: "fallback_discovery",
-    };
+    const alias = { fallback_cta: "fallback_discovery", wa_agent_pricing: "wa_agent_pricing" };
     const resolved = alias[id] || id;
     if (showcase && showcase.clips) {
       const hit = showcase.clips.find((c) => c.id === resolved);
@@ -271,16 +227,56 @@
   async function playShowcaseClip(clip) {
     let buf = decodedCache.get(clip.id);
     if (!buf) {
-      const res = await fetch(
-        "/" + clip.audio.replace(/^\//, "") + "?v=" + AUDIO_V,
-        { cache: "no-cache" }
-      );
+      const res = await fetch("/" + clip.audio.replace(/^\//, "") + "?v=" + AUDIO_V, {
+        cache: "no-cache",
+      });
       if (!res.ok) throw new Error("audio missing");
       const ctx = await ensureAudioCtx();
       buf = await ctx.decodeAudioData((await res.arrayBuffer()).slice(0));
       decodedCache.set(clip.id, buf);
     }
     await playBuffer(buf);
+  }
+
+  function pickArabicVoice() {
+    if (!("speechSynthesis" in window)) return null;
+    const voices = window.speechSynthesis.getVoices() || [];
+    const ar =
+      voices.find((v) => /^ar(-|$)/i.test(v.lang)) ||
+      voices.find((v) => /arab/i.test(v.lang + " " + v.name));
+    return ar || null;
+  }
+
+  async function speakArabicFreestyle(text) {
+    const speakText = arabicPrefer(text).slice(0, 320);
+    if (!speakText || !("speechSynthesis" in window)) return false;
+    // ensure voices loaded
+    if (!(window.speechSynthesis.getVoices() || []).length) {
+      await new Promise((r) => {
+        window.speechSynthesis.onvoiceschanged = () => r();
+        setTimeout(r, 400);
+      });
+    }
+    const voice = pickArabicVoice();
+    if (!voice) return false; // refuse English voices
+    await new Promise((resolve) => {
+      const u = new SpeechSynthesisUtterance(speakText);
+      u.voice = voice;
+      u.lang = voice.lang || "ar-SA";
+      u.rate = 1.02;
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        resolve();
+      };
+      u.onend = finish;
+      u.onerror = finish;
+      window.setTimeout(finish, Math.min(16000, 2000 + speakText.length * 90));
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    });
+    return true;
   }
 
   async function askBrain(message) {
@@ -290,11 +286,8 @@
       body: JSON.stringify({ message, history }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || data.detail || "chat failed");
-    return {
-      reply: (data.reply || "").toString().trim(),
-      clip: (data.clip || "").toString().trim(),
-    };
+    if (!res.ok && !data.reply) throw new Error(data.error || data.detail || "chat failed");
+    return (data.reply || "").toString().trim();
   }
 
   function stopRecognitionOnly() {
@@ -313,26 +306,32 @@
     busy = false;
     stopRecognitionOnly();
     stopAudio();
-    try {
-      await playTone("end");
-    } catch (_) {}
+    try { await playTone("end"); } catch (_) {}
     setCallUi(ui, false);
     setStatus(ui, statusText || "انتهت المكالمة");
   }
 
-  async function speakReply(ui, text, clipId) {
+  async function speakReply(ui, text) {
     setStatus(ui, "يتكلم…");
-    // Lady clips only — never browser TTS (causes English gibberish / silence)
-    let clip = null;
-    if (clipId) clip = getClipById(clipId);
-    if (!clip) {
-      const clean = arabicOnly(text) || text;
-      clip = matchClipByReply(clean);
+    const clean = arabicPrefer(text);
+    // 1) If LLM reply closely matches a lady script → play lady clip
+    const byReply = matchClipByReply(clean);
+    if (byReply) {
+      try {
+        await playShowcaseClip(byReply);
+        return clipArabicText(byReply.id) || clean;
+      } catch (_) {}
     }
-    if (!clip) clip = getClipById("fallback_discovery") || getClipById("clarify");
-    if (!clip) throw new Error("no audio clip");
-    await playShowcaseClip(clip);
-    return clipArabicText(clip.id) || arabicOnly(text) || text || "تمام";
+    // 2) Freestyle Arabic via browser ONLY if real Arabic voice exists
+    const ok = await speakArabicFreestyle(clean);
+    if (ok) return clean;
+    // 3) Last resort: discovery lady clip (never English gibberish)
+    const fb = getClipById("fallback_discovery") || getClipById("clarify");
+    if (fb) {
+      await playShowcaseClip(fb);
+      return clipArabicText(fb.id) || clean;
+    }
+    return clean;
   }
 
   function armListen(ui) {
@@ -342,7 +341,6 @@
       endSession(ui);
       return;
     }
-
     stopRecognitionOnly();
     recognition = new SpeechRecognition();
     recognition.lang = "ar-SA";
@@ -355,7 +353,6 @@
       setCallUi(ui, true);
       setStatus(ui, "أستمع…");
     };
-
     recognition.onerror = (e) => {
       const err = e.error || "unknown";
       if (!sessionActive) return;
@@ -366,7 +363,6 @@
       if (err === "not-allowed") endSession(ui, "المايك محظور");
       else window.setTimeout(() => armListen(ui), 300);
     };
-
     recognition.onend = () => {
       if (sessionActive && !busy) window.setTimeout(() => armListen(ui), 120);
     };
@@ -384,38 +380,24 @@
         await loadShowcase();
         history.push({ role: "user", content: said });
 
-        // Greetings only: instant lady clip. Everything else = live brain (multi-intent).
+        // Optional fast greetings only — everything else is real LLM
         const greetIds = new Set([
-          "greeting_salam",
-          "greeting_ahlan",
-          "greeting_alo",
-          "greeting_sabah",
-          "greeting_masa",
+          "greeting_salam", "greeting_ahlan", "greeting_alo", "greeting_sabah", "greeting_masa",
         ]);
-        const clip = matchShowcase(said);
-        if (clip && greetIds.has(clip.id)) {
+        const greet = matchShowcase(said);
+        if (greet && greetIds.has(greet.id)) {
           setStatus(ui, "يتكلم…");
-          await playShowcaseClip(clip);
-          const ar = clipArabicText(clip.id) || "حياك الله";
-          history.push({ role: "assistant", content: ar });
+          await playShowcaseClip(greet);
+          history.push({ role: "assistant", content: clipArabicText(greet.id) || "حياك الله" });
         } else {
           setStatus(ui, "…");
-          const brain = await askBrain(said);
-          let text = arabicOnly(brain.reply) || brain.reply;
-          const spoken = await speakReply(ui, text, brain.clip);
-          history.push({
-            role: "assistant",
-            content: spoken || arabicOnly(text) || "تمام",
-          });
+          let text = await askBrain(said);
+          text = arabicPrefer(text) || text;
+          const spoken = await speakReply(ui, text);
+          history.push({ role: "assistant", content: spoken || text || "تمام" });
         }
+
         while (history.length > 12) history.shift();
-        for (let i = 0; i < history.length; i++) {
-          if (history[i].role === "assistant") {
-            const c = arabicOnly(history[i].content);
-            if (c) history[i].content = c;
-            else if (/clip/i.test(String(history[i].content))) history[i].content = "تمام";
-          }
-        }
         setStatus(ui, "أستمع…");
       } catch (_) {
         setStatus(ui, "تعذر الرد · حاول مرة ثانية");
@@ -425,11 +407,8 @@
       }
     };
 
-    try {
-      recognition.start();
-    } catch (_) {
-      window.setTimeout(() => armListen(ui), 260);
-    }
+    try { recognition.start(); }
+    catch (_) { window.setTimeout(() => armListen(ui), 260); }
   }
 
   document.addEventListener("DOMContentLoaded", () => {
@@ -437,6 +416,11 @@
     setCallUi(ui, false);
     loadShowcase().catch(() => {});
     loadClipTexts().catch(() => {});
+    if ("speechSynthesis" in window) {
+      // warm voices list
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+    }
     ui.btn.addEventListener("click", async () => {
       if (sessionActive) {
         await endSession(ui, "انتهت المكالمة");
@@ -447,9 +431,7 @@
       await ensureAudioCtx();
       setCallUi(ui, true);
       setStatus(ui, "جاري الاتصال…");
-      try {
-        await playTone("start");
-      } catch (_) {}
+      try { await playTone("start"); } catch (_) {}
       armListen(ui);
     });
   });
