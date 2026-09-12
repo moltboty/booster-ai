@@ -30,9 +30,12 @@
         id: "voice-demo-status",
         "aria-live": "polite",
       },
-      ["اضغط تحدث للجلسة الصوتية"]
+      ["اضغط للاتصال بالمساعد"]
     );
 
+    const btnLabel = el("span", { className: "voice-demo-btn-label" }, [
+      "ابدأ المكالمة",
+    ]);
     const btn = el(
       "button",
       {
@@ -41,23 +44,23 @@
         id: "voice-demo-btn",
         "aria-pressed": "false",
       },
-      [el("span", { className: "voice-demo-btn-label" }, ["تحدث / Talk"])]
+      [btnLabel]
     );
 
     root.append(
       el("div", { className: "voice-demo-card" }, [
-        el("p", { className: "voice-demo-label" }, ["عرض سريع"]),
+        el("p", { className: "voice-demo-label" }, ["مكالمة صوتية"]),
         el("h2", { className: "voice-demo-title" }, ["مساعد Booster"]),
         status,
         btn,
         el("p", { className: "voice-demo-note" }, [
-          "وضع العرض: أسئلة محددة بصوت فوري ومتوازن · صوت فقط",
+          "أخضر = اتصال · أحمر = إنهاء · لهجة سعودية",
         ]),
       ])
     );
 
     document.body.appendChild(root);
-    return { btn, status };
+    return { btn, btnLabel, status };
   }
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -67,16 +70,20 @@
   let audioCtx = null;
   let activeSource = null;
   let showcase = null;
+  let clipTexts = null;
   const decodedCache = new Map();
   const history = [];
+  const AUDIO_V = "fasee7lady2";
 
   function setStatus(ui, text) {
     ui.status.textContent = text;
   }
 
-  function setListeningUi(ui, on) {
+  function setCallUi(ui, on) {
     ui.btn.setAttribute("aria-pressed", on ? "true" : "false");
+    ui.btn.classList.toggle("is-in-call", on);
     ui.btn.classList.toggle("is-listening", on);
+    ui.btnLabel.textContent = on ? "إنهاء المكالمة" : "ابدأ المكالمة";
   }
 
   function ensureAudioCtx() {
@@ -110,22 +117,16 @@
     }
   }
 
-  async function prefetchShowcaseAudio() {
-    const pack = await loadShowcase();
-    if (!pack || !pack.clips) return;
-    const ctx = await ensureAudioCtx();
-    await Promise.all(
-      pack.clips.map(async (clip) => {
-        if (decodedCache.has(clip.id)) return;
-        try {
-          const res = await fetch("/" + clip.audio.replace(/^\//, "") + "?v=fasee7lady1", { cache: "no-cache" });
-          if (!res.ok) return;
-          const ab = await res.arrayBuffer();
-          const buf = await ctx.decodeAudioData(ab.slice(0));
-          decodedCache.set(clip.id, buf);
-        } catch (_) {}
-      })
-    );
+  async function loadClipTexts() {
+    if (clipTexts) return clipTexts;
+    try {
+      const res = await fetch("/assets/talk/clips-text.json", { cache: "no-cache" });
+      if (!res.ok) return null;
+      clipTexts = await res.json();
+      return clipTexts;
+    } catch (_) {
+      return null;
+    }
   }
 
   function normalizeSaid(said) {
@@ -146,17 +147,28 @@
     for (const clip of showcase.clips) {
       const triggers = clip.triggers || [];
       if (!triggers.length) continue;
-      if (triggers.some((k) => t.includes(normalizeSaid(k)))) {
-        return clip;
-      }
+      if (triggers.some((k) => t.includes(normalizeSaid(k)))) return clip;
     }
     return null;
   }
 
-  function getCtaClip() {
-    if (!showcase || !showcase.clips) return null;
-    const id = showcase.cta_clip_id || "fallback_cta";
-    return showcase.clips.find((c) => c.id === id) || null;
+  function matchClipByReply(reply) {
+    if (!clipTexts || !showcase || !showcase.clips) return null;
+    const t = normalizeSaid(reply);
+    if (!t) return null;
+    let best = null;
+    let bestLen = 0;
+    for (const [id, text] of Object.entries(clipTexts)) {
+      const n = normalizeSaid(text);
+      if (!n) continue;
+      if (t === n || t.includes(n) || n.includes(t)) {
+        if (n.length > bestLen) {
+          bestLen = n.length;
+          best = showcase.clips.find((c) => c.id === id) || { id, audio: "assets/talk/" + id + ".wav" };
+        }
+      }
+    }
+    return best;
   }
 
   async function playBuffer(buffer) {
@@ -166,7 +178,6 @@
       const src = ctx.createBufferSource();
       activeSource = src;
       src.buffer = buffer;
-      // Direct playback — no gain/compressor (those clipped and made voice harsh).
       src.connect(ctx.destination);
       src.onended = () => {
         if (activeSource === src) activeSource = null;
@@ -179,7 +190,10 @@
   async function playShowcaseClip(clip) {
     let buf = decodedCache.get(clip.id);
     if (!buf) {
-      const res = await fetch("/" + clip.audio.replace(/^\//, "") + "?v=fasee7lady1", { cache: "no-cache" });
+      const res = await fetch(
+        "/" + clip.audio.replace(/^\//, "") + "?v=" + AUDIO_V,
+        { cache: "no-cache" }
+      );
       if (!res.ok) throw new Error("showcase audio missing");
       const ctx = await ensureAudioCtx();
       buf = await ctx.decodeAudioData((await res.arrayBuffer()).slice(0));
@@ -215,8 +229,35 @@
     busy = false;
     stopRecognitionOnly();
     stopAudio();
-    setListeningUi(ui, false);
-    setStatus(ui, statusText || "انتهت الجلسة");
+    setCallUi(ui, false);
+    setStatus(ui, statusText || "انتهت المكالمة");
+  }
+
+  async function speakBrowser(text, lang) {
+    if (!("speechSynthesis" in window)) return;
+    const speakText = String(text || "").slice(0, 280);
+    await new Promise((resolve) => {
+      const u = new SpeechSynthesisUtterance(speakText);
+      u.lang = lang === "ar" ? "ar-SA" : "en-US";
+      u.onend = resolve;
+      u.onerror = resolve;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    });
+  }
+
+  async function speakReply(ui, text, langHint) {
+    const lang = detectLang(text) || langHint || "ar";
+    setStatus(ui, "يتكلم…");
+    const byReply = matchClipByReply(text);
+    if (byReply) {
+      try {
+        await playShowcaseClip(byReply);
+        return;
+      } catch (_) {}
+    }
+    // No SILMA — temporary browser voice for freestyle LLM lines
+    await speakBrowser(text, lang);
   }
 
   function armListen(ui) {
@@ -236,7 +277,7 @@
 
     recognition.onstart = () => {
       if (!sessionActive) return;
-      setListeningUi(ui, true);
+      setCallUi(ui, true);
       setStatus(ui, "أستمع…");
     };
 
@@ -261,33 +302,25 @@
       if (!said) return;
       busy = true;
       stopRecognitionOnly();
-      setListeningUi(ui, false);
+      setCallUi(ui, true);
 
       const langHint = detectLang(said);
       try {
+        // Fast path: known FAQ triggers → lady clip
         const clip = matchShowcase(said);
         if (clip) {
           setStatus(ui, "يتكلم…");
           await playShowcaseClip(clip);
           history.push({ role: "user", content: said });
-          history.push({ role: "assistant", content: "[showcase:" + clip.id + "]" });
-          while (history.length > 4) history.shift();
-        } else if ((showcase && showcase.fallback === "cta") || !showcase || showcase.fallback !== "live") {
-          const cta = getCtaClip();
-          if (!cta) throw new Error("cta missing");
-          setStatus(ui, "يتكلم…");
-          await playShowcaseClip(cta);
-          history.push({ role: "user", content: said });
-          history.push({ role: "assistant", content: "[showcase:fallback_cta]" });
-          while (history.length > 4) history.shift();
+          history.push({ role: "assistant", content: "[clip:" + clip.id + "]" });
         } else {
           setStatus(ui, "…");
           const text = await askBrain(said);
           history.push({ role: "user", content: said });
           history.push({ role: "assistant", content: text });
-          while (history.length > 4) history.shift();
-          await speakLive(ui, text, detectLang(text) || langHint);
+          await speakReply(ui, text, langHint);
         }
+        while (history.length > 8) history.shift();
         setStatus(ui, "أستمع…");
       } catch (_) {
         setStatus(ui, "تعذر الرد · حاول مرة ثانية");
@@ -304,53 +337,21 @@
     }
   }
 
-  async function speakLive(ui, text, lang) {
-    setStatus(ui, lang === "ar" ? "يتكلم…" : "Speaking…");
-    const speakText = text.slice(0, 200);
-    stopAudio();
-    try {
-      const res = await fetch("/api/tts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: speakText,
-          voice_id: "salma",
-          model_id: "silma-tts-v2-ksa",
-        }),
-      });
-      if (res.ok) {
-        const ctx = await ensureAudioCtx();
-        const buf = await ctx.decodeAudioData((await res.arrayBuffer()).slice(0));
-        await playBuffer(buf);
-        return;
-      }
-    } catch (_) {}
-
-    if ("speechSynthesis" in window) {
-      await new Promise((resolve) => {
-        const u = new SpeechSynthesisUtterance(speakText);
-        u.lang = lang === "ar" ? "ar-SA" : "en-US";
-        u.onend = resolve;
-        u.onerror = resolve;
-        window.speechSynthesis.cancel();
-        window.speechSynthesis.speak(u);
-      });
-    }
-  }
-
   document.addEventListener("DOMContentLoaded", () => {
     const ui = createWidget();
-    loadShowcase().then(() => prefetchShowcaseAudio()).catch(() => {});
+    setCallUi(ui, false);
+    loadShowcase().catch(() => {});
+    loadClipTexts().catch(() => {});
     ui.btn.addEventListener("click", () => {
       if (sessionActive) {
-        endSession(ui, "انتهت الجلسة");
+        endSession(ui, "انتهت المكالمة");
         return;
       }
       sessionActive = true;
       history.length = 0;
       ensureAudioCtx();
-      prefetchShowcaseAudio();
-      setStatus(ui, "أستمع…");
+      setCallUi(ui, true);
+      setStatus(ui, "جاري الاتصال…");
       armListen(ui);
     });
   });
