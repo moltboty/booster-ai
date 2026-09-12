@@ -50,11 +50,11 @@
     root.append(
       el("div", { className: "voice-demo-card" }, [
         el("p", { className: "voice-demo-label" }, ["مكالمة صوتية"]),
-        el("h2", { className: "voice-demo-title" }, ["مساعد Booster"]),
+        el("h2", { className: "voice-demo-title" }, ["مساعد بوستر"]),
         status,
         btn,
         el("p", { className: "voice-demo-note" }, [
-          "أخضر = اتصال · أحمر = إنهاء · لهجة سعودية",
+          "أخضر للاتصال · أحمر للإنهاء",
         ]),
       ])
     );
@@ -63,7 +63,8 @@
     return { btn, btnLabel, status };
   }
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
   let recognition = null;
   let sessionActive = false;
   let busy = false;
@@ -73,7 +74,7 @@
   let clipTexts = null;
   const decodedCache = new Map();
   const history = [];
-  const AUDIO_V = "fasee7lady2";
+  const AUDIO_V = "fasee7lady3";
 
   function setStatus(ui, text) {
     ui.status.textContent = text;
@@ -91,7 +92,8 @@
       const AC = window.AudioContext || window.webkitAudioContext;
       audioCtx = new AC();
     }
-    if (audioCtx.state === "suspended") return audioCtx.resume().then(() => audioCtx);
+    if (audioCtx.state === "suspended")
+      return audioCtx.resume().then(() => audioCtx);
     return Promise.resolve(audioCtx);
   }
 
@@ -103,6 +105,38 @@
       activeSource = null;
     }
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  }
+
+  async function playTone(kind) {
+    const ctx = await ensureAudioCtx();
+    const now = ctx.currentTime;
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    if (kind === "start") {
+      // soft two-note connect
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.setValueAtTime(1175, now + 0.09);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+      osc.connect(gain);
+      osc.start(now);
+      osc.stop(now + 0.24);
+      await new Promise((r) => setTimeout(r, 260));
+    } else {
+      // lower end-call tone
+      osc.frequency.setValueAtTime(660, now);
+      osc.frequency.setValueAtTime(440, now + 0.1);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.1, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+      osc.connect(gain);
+      osc.start(now);
+      osc.stop(now + 0.3);
+      await new Promise((r) => setTimeout(r, 320));
+    }
   }
 
   async function loadShowcase() {
@@ -120,7 +154,9 @@
   async function loadClipTexts() {
     if (clipTexts) return clipTexts;
     try {
-      const res = await fetch("/assets/talk/clips-text.json", { cache: "no-cache" });
+      const res = await fetch("/assets/talk/clips-text.json", {
+        cache: "no-cache",
+      });
       if (!res.ok) return null;
       clipTexts = await res.json();
       return clipTexts;
@@ -141,6 +177,27 @@
       .trim();
   }
 
+  function arabicOnly(text) {
+    const t = String(text || "").trim();
+    if (!t) return "";
+    // drop internal markers / English clip ids
+    if (/\[?\s*clip\s*[:\]]/i.test(t)) return "";
+    if (/^[\[\(]?clip\b/i.test(t)) return "";
+    const letters = t.replace(/[\d\s\W_]+/g, "");
+    if (!letters) return t;
+    const ar = (t.match(/[\u0600-\u06FF]/g) || []).length;
+    const en = (t.match(/[A-Za-z]/g) || []).length;
+    if (en > 0 && en >= ar) return "";
+    // strip leftover latin words but keep Arabic
+    const cleaned = t
+      .replace(/\bclip\b/gi, "")
+      .replace(/\bservices?\b/gi, "")
+      .replace(/\b[A-Za-z]{2,}\b/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+    return cleaned;
+  }
+
   function matchShowcase(said) {
     if (!showcase || !showcase.clips) return null;
     const t = normalizeSaid(said);
@@ -152,9 +209,14 @@
     return null;
   }
 
+  function clipArabicText(id) {
+    if (clipTexts && clipTexts[id]) return String(clipTexts[id]);
+    return "";
+  }
+
   function matchClipByReply(reply) {
     if (!clipTexts || !showcase || !showcase.clips) return null;
-    const t = normalizeSaid(reply);
+    const t = normalizeSaid(arabicOnly(reply) || reply);
     if (!t) return null;
     let best = null;
     let bestLen = 0;
@@ -164,11 +226,24 @@
       if (t === n || t.includes(n) || n.includes(t)) {
         if (n.length > bestLen) {
           bestLen = n.length;
-          best = showcase.clips.find((c) => c.id === id) || { id, audio: "assets/talk/" + id + ".wav" };
+          best =
+            showcase.clips.find((c) => c.id === id) || {
+              id,
+              audio: "assets/talk/" + id + ".wav",
+            };
         }
       }
     }
     return best;
+  }
+
+  function getClipById(id) {
+    if (!id) return null;
+    if (showcase && showcase.clips) {
+      const hit = showcase.clips.find((c) => c.id === id);
+      if (hit) return hit;
+    }
+    return { id, audio: "assets/talk/" + id + ".wav" };
   }
 
   async function playBuffer(buffer) {
@@ -194,7 +269,7 @@
         "/" + clip.audio.replace(/^\//, "") + "?v=" + AUDIO_V,
         { cache: "no-cache" }
       );
-      if (!res.ok) throw new Error("showcase audio missing");
+      if (!res.ok) throw new Error("audio missing");
       const ctx = await ensureAudioCtx();
       buf = await ctx.decodeAudioData((await res.arrayBuffer()).slice(0));
       decodedCache.set(clip.id, buf);
@@ -224,53 +299,74 @@
     recognition = null;
   }
 
-  function endSession(ui, statusText) {
+  async function endSession(ui, statusText) {
     sessionActive = false;
     busy = false;
     stopRecognitionOnly();
     stopAudio();
+    try {
+      await playTone("end");
+    } catch (_) {}
     setCallUi(ui, false);
     setStatus(ui, statusText || "انتهت المكالمة");
   }
 
-  async function speakBrowser(text, lang) {
+  async function speakBrowser(text) {
     if (!("speechSynthesis" in window)) return;
-    const speakText = String(text || "").slice(0, 280);
+    const speakText = arabicOnly(text).slice(0, 280);
+    if (!speakText) return;
     await new Promise((resolve) => {
       const u = new SpeechSynthesisUtterance(speakText);
-      u.lang = lang === "ar" ? "ar-SA" : "en-US";
-      u.onend = resolve;
-      u.onerror = resolve;
+      u.lang = "ar-SA";
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        resolve();
+      };
+      u.onend = finish;
+      u.onerror = finish;
+      window.setTimeout(finish, Math.min(12000, 1800 + speakText.length * 80));
       window.speechSynthesis.cancel();
       window.speechSynthesis.speak(u);
     });
   }
 
-  async function speakReply(ui, text, langHint) {
-    const lang = detectLang(text) || langHint || "ar";
+  async function speakReply(ui, text) {
     setStatus(ui, "يتكلم…");
-    const byReply = matchClipByReply(text);
+    const clean = arabicOnly(text);
+    if (!clean) {
+      const fallback = getClipById("clarify") || getClipById("fallback_cta");
+      if (fallback) {
+        try {
+          await playShowcaseClip(fallback);
+          return clipArabicText(fallback.id) || clean;
+        } catch (_) {}
+      }
+      return "";
+    }
+    const byReply = matchClipByReply(clean);
     if (byReply) {
       try {
         await playShowcaseClip(byReply);
-        return;
+        return clipArabicText(byReply.id) || clean;
       } catch (_) {}
     }
-    // No SILMA — temporary browser voice for freestyle LLM lines
-    await speakBrowser(text, lang);
+    await speakBrowser(clean);
+    return clean;
   }
 
   function armListen(ui) {
     if (!sessionActive || busy) return;
     if (!SpeechRecognition) {
-      setStatus(ui, "يلزم Chrome أو Edge مع HTTPS");
+      setStatus(ui, "يلزم متصفح يدعم المايك مع اتصال آمن");
       endSession(ui);
       return;
     }
 
     stopRecognitionOnly();
     recognition = new SpeechRecognition();
-    recognition.lang = document.documentElement.lang === "en" ? "en-US" : "ar-SA";
+    recognition.lang = "ar-SA";
     recognition.interimResults = false;
     recognition.continuous = false;
     recognition.maxAlternatives = 1;
@@ -304,23 +400,34 @@
       stopRecognitionOnly();
       setCallUi(ui, true);
 
-      const langHint = detectLang(said);
       try {
-        // Fast path: known FAQ triggers → lady clip
+        await loadClipTexts();
         const clip = matchShowcase(said);
         if (clip) {
           setStatus(ui, "يتكلم…");
           await playShowcaseClip(clip);
+          const ar = clipArabicText(clip.id) || "تم";
           history.push({ role: "user", content: said });
-          history.push({ role: "assistant", content: "[clip:" + clip.id + "]" });
+          history.push({ role: "assistant", content: ar });
         } else {
           setStatus(ui, "…");
-          const text = await askBrain(said);
+          let text = await askBrain(said);
+          text = arabicOnly(text) || text;
           history.push({ role: "user", content: said });
-          history.push({ role: "assistant", content: text });
-          await speakReply(ui, text, langHint);
+          const spoken = await speakReply(ui, text);
+          history.push({
+            role: "assistant",
+            content: spoken || arabicOnly(text) || "تمام",
+          });
         }
         while (history.length > 8) history.shift();
+        // never keep english/clip markers in history
+        for (let i = 0; i < history.length; i++) {
+          if (history[i].role === "assistant") {
+            const c = arabicOnly(history[i].content);
+            if (c) history[i].content = c;
+          }
+        }
         setStatus(ui, "أستمع…");
       } catch (_) {
         setStatus(ui, "تعذر الرد · حاول مرة ثانية");
@@ -342,16 +449,19 @@
     setCallUi(ui, false);
     loadShowcase().catch(() => {});
     loadClipTexts().catch(() => {});
-    ui.btn.addEventListener("click", () => {
+    ui.btn.addEventListener("click", async () => {
       if (sessionActive) {
-        endSession(ui, "انتهت المكالمة");
+        await endSession(ui, "انتهت المكالمة");
         return;
       }
       sessionActive = true;
       history.length = 0;
-      ensureAudioCtx();
+      await ensureAudioCtx();
       setCallUi(ui, true);
       setStatus(ui, "جاري الاتصال…");
+      try {
+        await playTone("start");
+      } catch (_) {}
       armListen(ui);
     });
   });
