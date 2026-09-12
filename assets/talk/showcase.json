@@ -3,18 +3,539 @@
   "fallback": "cta",
   "cta_clip_id": "fallback_cta",
   "clips": [
-    {"id":"greeting_sabah","audio":"assets/talk/greeting_sabah.wav","triggers":["صباح الخير","صباح النور","صبح الخير","صباحكم","good morning","sabah al"]},
-    {"id":"greeting_masa","audio":"assets/talk/greeting_masa.wav","triggers":["مساء الخير","مساء النور","مسا الخير","مساءكم","good evening","masa al"]},
-    {"id":"greeting_alo","audio":"assets/talk/greeting_alo.wav","triggers":["ألو","الو","الو؟","ألو؟","الو الو","hello?","alo"]},
-    {"id":"greeting_ahlan","audio":"assets/talk/greeting_ahlan.wav","triggers":["أهلا","اهلا","أهلاً","اهلاً","هلا","هلا والله","مرحبا","مرحباً","يا هلا","ahlan","marhaba"]},
-    {"id":"greeting_salam","audio":"assets/talk/greeting_salam.wav","triggers":["السلام عليكم","سلام عليكم","السلام","سلام","عليكم السلام","assalam","as-salamu","salaam","salam"]},
-    {"id":"what_is","audio":"assets/talk/what_is.wav","triggers":["وش هي بوستر","وش هو بوستر","ما هي بوستر","ما هو بوستر","من هي بوستر","من هو بوستر","كلمني عن بوستر","كلميني عن بوستر","عرفني على بوستر","وش بوستر","ما بوستر","بوستر اي","بوستر AI","what is booster","who are you","tell me about booster","من أنتم","من انتم"]},
-    {"id":"services","audio":"assets/talk/services.wav","triggers":["وش خدماتكم","وش عندكم","وش السيرفيسز","وش أنواع خدماتكم","أنواع خدماتكم","الخدمات","خدماتكم","خدمات","نستفيد","وش تقدمون","وش تسوون","أتمتة","اتمتة","سيرفس","services","what do you offer","what services"]},
-    {"id":"trust","audio":"assets/talk/trust.wav","triggers":["ليش نثق","ليش أثق","ليش اثق","لماذا نثق","وش أفضل شي فيكم","وش أفضل ميزاتكم","وش ميزاتكم","ميزاتكم","جودة","تدريب","ما بعد البيع","why trust","after sales","why should i trust"]},
-    {"id":"location","audio":"assets/talk/location.wav","triggers":["وين مقركم","وين الموقع حقكم","وين موقعكم","أين موقعكم","أين مقركم","وين موقع","أين موقع","فين مقر","مقركم","موقعكم","وين انتم","وين أنتم","location","where are you","where is your office"]},
-    {"id":"owner","audio":"assets/talk/owner.wav","triggers":["مالك","مؤسس","صاحب","founder","owner","ceo","مين صاحب","من صاحب","مين مؤسس","من مؤسس"]},
-    {"id":"pricing","audio":"assets/talk/pricing.wav","triggers":["كم السعر","كم أسعاركم","كم اسعاركم","كيف يتم حساب السعر","كيف تحسبون السعر","كم هي التكلفة","كم التكلفة","سعر","أسعار","اسعار","تكلفة","price","pricing","cost","how much"]},
-    {"id":"start","audio":"assets/talk/start.wav","triggers":["كيف نبدأ","كيف نبدأ معكم","كيف أتواصل معكم","كيف اتواصل معكم","كيف أقدر أتقابل معكم","كيف اقدر اتقابل معكم","هل ممكن تتواصلون معي","هل ممكن تتواصل معي","كيف ابدأ","كيف أبدأ","نبدأ","تواصل","أتواصل","اتواصل","how do we start","get started","contact you","book a call"]},
-    {"id":"fallback_cta","audio":"assets/talk/fallback_cta.wav","triggers":[]}
+    {
+      "id": "greeting_sabah",
+      "audio": "assets/talk/greeting_sabah.wav",
+      "triggers": [
+        "صباح الخير",
+        "صباح النور",
+        "صبح الخير",
+        "صباحكم",
+        "good morning",
+        "sabah"
+      ]
+    },
+    {
+      "id": "greeting_masa",
+      "audio": "assets/talk/greeting_masa.wav",
+      "triggers": [
+        "مساء الخير",
+        "مساء النور",
+        "مسا الخير",
+        "مساءكم",
+        "good evening",
+        "masa"
+      ]
+    },
+    {
+      "id": "greeting_alo",
+      "audio": "assets/talk/greeting_alo.wav",
+      "triggers": [
+        "ألو",
+        "الو",
+        "الو؟",
+        "ألو؟",
+        "الو الو",
+        "hello?",
+        "alo"
+      ]
+    },
+    {
+      "id": "greeting_ahlan",
+      "audio": "assets/talk/greeting_ahlan.wav",
+      "triggers": [
+        "أهلا",
+        "اهلا",
+        "أهلاً",
+        "اهلاً",
+        "هلا",
+        "هلا والله",
+        "مرحبا",
+        "مرحباً",
+        "يا هلا",
+        "ahlan",
+        "marhaba"
+      ]
+    },
+    {
+      "id": "greeting_salam",
+      "audio": "assets/talk/greeting_salam.wav",
+      "triggers": [
+        "السلام عليكم",
+        "سلام عليكم",
+        "السلام",
+        "سلام",
+        "عليكم السلام",
+        "assalam",
+        "salaam",
+        "salam"
+      ]
+    },
+    {
+      "id": "what_is",
+      "audio": "assets/talk/what_is.wav",
+      "triggers": [
+        "وش هي بوستر",
+        "وش هو بوستر",
+        "ما هي بوستر",
+        "ما هو بوستر",
+        "من هي بوستر",
+        "من هو بوستر",
+        "كلمني عن بوستر",
+        "عرفني على بوستر",
+        "وش بوستر",
+        "بوستر اي",
+        "بوستر AI",
+        "what is booster",
+        "who are you",
+        "tell me about booster",
+        "من أنتم",
+        "من انتم",
+        "عن بوستر"
+      ]
+    },
+    {
+      "id": "what_do_you_do",
+      "audio": "assets/talk/what_do_you_do.wav",
+      "triggers": [
+        "وش تسوون",
+        "وش تعملون",
+        "وش تقدمون",
+        "ماذا تفعلون",
+        "what do you do",
+        "وش شغلكم",
+        "كيف تساعدون",
+        "كيف تساعدونا"
+      ]
+    },
+    {
+      "id": "approach",
+      "audio": "assets/talk/approach.wav",
+      "triggers": [
+        "طريقتكم",
+        "منهجيتكم",
+        "كيف تشتغلون",
+        "كيف تعملون",
+        "نحلّل",
+        "نحلل",
+        "نبني",
+        "نعزز",
+        "approach",
+        "methodology",
+        "كيف تبنون"
+      ]
+    },
+    {
+      "id": "services",
+      "audio": "assets/talk/services.wav",
+      "triggers": [
+        "وش خدماتكم",
+        "وش عندكم",
+        "الخدمات",
+        "خدماتكم",
+        "خدمات",
+        "سيرفس",
+        "services",
+        "what services",
+        "what do you offer",
+        "وش أنواع"
+      ]
+    },
+    {
+      "id": "ai_agents",
+      "audio": "assets/talk/ai_agents.wav",
+      "triggers": [
+        "ai agent",
+        "ai agents",
+        "وكيل ذكاء",
+        "وكلاء",
+        "مساعد ذكاء",
+        "agents",
+        "تبون وكيل"
+      ]
+    },
+    {
+      "id": "automation",
+      "audio": "assets/talk/automation.wav",
+      "triggers": [
+        "أتمتة",
+        "اتمتة",
+        "أتمت",
+        "اتمت",
+        "automation",
+        "أتمتة العمليات",
+        "عمليات متكررة"
+      ]
+    },
+    {
+      "id": "marketing",
+      "audio": "assets/talk/marketing.wav",
+      "triggers": [
+        "تسويق",
+        "التسويق",
+        "marketing",
+        "أتمتة التسويق"
+      ]
+    },
+    {
+      "id": "hr",
+      "audio": "assets/talk/hr.wav",
+      "triggers": [
+        "موارد بشرية",
+        "الموارد البشرية",
+        "hr",
+        "اتش ار",
+        "الموظفين"
+      ]
+    },
+    {
+      "id": "sales",
+      "audio": "assets/talk/sales.wav",
+      "triggers": [
+        "مبيعات",
+        "المبيعات",
+        "sales",
+        "بيع"
+      ]
+    },
+    {
+      "id": "customer_service",
+      "audio": "assets/talk/customer_service.wav",
+      "triggers": [
+        "خدمة العملاء",
+        "خدمة عملاء",
+        "كستمر",
+        "customer service",
+        "دعم العملاء"
+      ]
+    },
+    {
+      "id": "accounting_finance",
+      "audio": "assets/talk/accounting_finance.wav",
+      "triggers": [
+        "محاسبة",
+        "المحاسبة",
+        "مالية",
+        "المالية",
+        "accounting",
+        "finance",
+        "مالية ومحاسبة"
+      ]
+    },
+    {
+      "id": "decision_support",
+      "audio": "assets/talk/decision_support.wav",
+      "triggers": [
+        "دعم القرار",
+        "دعم القرارات",
+        "تحليل معلومات",
+        "decision support",
+        "تقارير للإدارة"
+      ]
+    },
+    {
+      "id": "training",
+      "audio": "assets/talk/training.wav",
+      "triggers": [
+        "تدريب",
+        "تدريب الفريق",
+        "تمكين",
+        "training",
+        "تدرّبون",
+        "تدربون"
+      ]
+    },
+    {
+      "id": "consulting",
+      "audio": "assets/talk/consulting.wav",
+      "triggers": [
+        "استشارة",
+        "استشارات",
+        "consulting",
+        "نصيحة",
+        "دراسة"
+      ]
+    },
+    {
+      "id": "small_business",
+      "audio": "assets/talk/small_business.wav",
+      "triggers": [
+        "شركة صغيرة",
+        "منشأة صغيرة",
+        "مش مشروع كبير",
+        "مو شركة كبيرة",
+        "small business",
+        "startup",
+        "ناشئة"
+      ]
+    },
+    {
+      "id": "large_company",
+      "audio": "assets/talk/large_company.wav",
+      "triggers": [
+        "شركة كبيرة",
+        "منشأة كبيرة",
+        "مؤسسة كبيرة",
+        "large company",
+        "enterprise"
+      ]
+    },
+    {
+      "id": "industry_question",
+      "audio": "assets/talk/industry_question.wav",
+      "triggers": [
+        "مجالنا",
+        "قطاعنا",
+        "ينفع لمجال",
+        "يناسب مجال",
+        "صناعتنا",
+        "industry",
+        "هل يناسب"
+      ]
+    },
+    {
+      "id": "integration",
+      "audio": "assets/talk/integration.wav",
+      "triggers": [
+        "تكامل",
+        "تتكامل",
+        "تربطون",
+        "integration",
+        "api",
+        "أنظمتنا",
+        "ربط الأنظمة"
+      ]
+    },
+    {
+      "id": "existing_system",
+      "audio": "assets/talk/existing_system.wav",
+      "triggers": [
+        "أنظمتنا الحالية",
+        "نظامنا الحالي",
+        "نغير النظام",
+        "existing system",
+        "بدون تغيير النظام"
+      ]
+    },
+    {
+      "id": "custom_solution",
+      "audio": "assets/talk/custom_solution.wav",
+      "triggers": [
+        "مخصص",
+        "حسب احتياجنا",
+        "custom",
+        "جاهز ولا مخصص",
+        "حلول جاهزة"
+      ]
+    },
+    {
+      "id": "security",
+      "audio": "assets/talk/security.wav",
+      "triggers": [
+        "أمان",
+        "الأمان",
+        "خصوصية",
+        "security",
+        "أمن البيانات",
+        "سيكيورتي"
+      ]
+    },
+    {
+      "id": "company_data",
+      "audio": "assets/talk/company_data.wav",
+      "triggers": [
+        "بيانات الشركة",
+        "وصول للبيانات",
+        "company data",
+        "بياناتنا"
+      ]
+    },
+    {
+      "id": "sensitive_data",
+      "audio": "assets/talk/sensitive_data.wav",
+      "triggers": [
+        "بيانات حساسة",
+        "سرية",
+        "sensitive",
+        "متطلبات أمنية"
+      ]
+    },
+    {
+      "id": "pricing",
+      "audio": "assets/talk/pricing.wav",
+      "triggers": [
+        "كم السعر",
+        "كم أسعاركم",
+        "أسعار",
+        "اسعار",
+        "تكلفة",
+        "price",
+        "pricing",
+        "cost",
+        "كيف التسعير"
+      ]
+    },
+    {
+      "id": "pricing_push",
+      "audio": "assets/talk/pricing_push.wav",
+      "triggers": [
+        "أبي السعر الحين",
+        "عطني سعر",
+        "كم بالضبط",
+        "سعر فوري"
+      ]
+    },
+    {
+      "id": "timeline",
+      "audio": "assets/talk/timeline.wav",
+      "triggers": [
+        "كم المدة",
+        "مدة التنفيذ",
+        "timeline",
+        "متى يخلص",
+        "كم ياخذ وقت",
+        "وقت التنفيذ"
+      ]
+    },
+    {
+      "id": "location",
+      "audio": "assets/talk/location.wav",
+      "triggers": [
+        "وين مقركم",
+        "وين الموقع",
+        "أين موقعكم",
+        "مقركم",
+        "موقعكم",
+        "وين انتم",
+        "location",
+        "where are you",
+        "الرياض"
+      ]
+    },
+    {
+      "id": "onsite",
+      "audio": "assets/talk/onsite.wav",
+      "triggers": [
+        "زيارة",
+        "اجتماع حضوري",
+        "onsite",
+        "تجون عندنا",
+        "اجتماع في المكتب"
+      ]
+    },
+    {
+      "id": "trust",
+      "audio": "assets/talk/trust.wav",
+      "triggers": [
+        "ليش نثق",
+        "ليش أثق",
+        "لماذا نثق",
+        "why trust",
+        "جودة",
+        "ما بعد البيع",
+        "ميزاتكم"
+      ]
+    },
+    {
+      "id": "start",
+      "audio": "assets/talk/start.wav",
+      "triggers": [
+        "كيف نبدأ",
+        "كيف ابدأ",
+        "كيف أبدأ",
+        "نبدأ",
+        "how do we start",
+        "get started",
+        "كيف أتواصل",
+        "تواصل"
+      ]
+    },
+    {
+      "id": "interested",
+      "audio": "assets/talk/interested.wav",
+      "triggers": [
+        "مهتم",
+        "أبي",
+        "ابغى",
+        "نبي نبدأ",
+        "interested",
+        "ودي",
+        "حابين"
+      ]
+    },
+    {
+      "id": "meeting",
+      "audio": "assets/talk/meeting.wav",
+      "triggers": [
+        "اجتماع",
+        "مقابلة",
+        "meeting",
+        "حجز اجتماع",
+        "نرتب اجتماع"
+      ]
+    },
+    {
+      "id": "discovery_ask",
+      "audio": "assets/talk/discovery_ask.wav",
+      "triggers": [
+        "أبي AI لشركتي",
+        "ابي ai",
+        "أبي أتمتة",
+        "ابي اتمته",
+        "نحتاج ذكاء اصطناعي",
+        "نحتاج أتمتة",
+        "something for my company"
+      ]
+    },
+    {
+      "id": "discovery_cs_example",
+      "audio": "assets/talk/discovery_cs_example.wav",
+      "triggers": [
+        "أسئلة العملاء",
+        "نفس الأسئلة",
+        "يردّون على العملاء",
+        "واتساب العملاء"
+      ]
+    },
+    {
+      "id": "clarify",
+      "audio": "assets/talk/clarify.wav",
+      "triggers": [
+        "وضح",
+        "وضّح",
+        "ما فهمت",
+        "clarify"
+      ]
+    },
+    {
+      "id": "didnt_understand",
+      "audio": "assets/talk/didnt_understand.wav",
+      "triggers": []
+    },
+    {
+      "id": "repeat",
+      "audio": "assets/talk/repeat.wav",
+      "triggers": [
+        "كرر",
+        "عيد",
+        "repeat",
+        "أعد"
+      ]
+    },
+    {
+      "id": "unrelated",
+      "audio": "assets/talk/unrelated.wav",
+      "triggers": []
+    },
+    {
+      "id": "unknown",
+      "audio": "assets/talk/unknown.wav",
+      "triggers": []
+    },
+    {
+      "id": "fallback_cta",
+      "audio": "assets/talk/fallback_cta.wav",
+      "triggers": []
+    }
   ]
 }
