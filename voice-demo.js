@@ -13,7 +13,94 @@
     ERROR: "ERROR",
   });
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  // Record audio directly; do not depend on browser-vendor speech recognition.
+  class RecordedSpeechRecognition {
+    constructor() { this.cancelled = false; this.ending = false; this.controller = new AbortController(); }
+    async start() {
+      try {
+        const stream = await window.navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+        if (this.cancelled) { stream.getTracks().forEach(t=>t.stop()); return; }
+        this.stream = stream;
+        const Context = window.AudioContext || window.webkitAudioContext;
+        this.context = new Context();
+        await this.context.resume();
+        if (this.cancelled) return;
+        const source = this.context.createMediaStreamSource(stream);
+        const analyser = this.context.createAnalyser(); analyser.fftSize = 2048;
+        source.connect(analyser);
+        const types = ['audio/webm;codecs=opus','audio/mp4','audio/webm'];
+        const mimeType = types.find(type=>window.MediaRecorder.isTypeSupported(type));
+        this.recorder = new window.MediaRecorder(stream, mimeType ? {mimeType} : {});
+        this.chunks = [];
+        this.recorder.ondataavailable = event => { if(event.data.size) this.chunks.push(event.data); };
+        this.recorder.onerror = () => this.fail('audio-capture');
+        this.recorder.onstop = () => this.transcribe();
+        this.recorder.start(200);
+        this.started = performance.now(); this.lastVoice = this.started; this.voiceMs = 0;
+        const samples = new Float32Array(analyser.fftSize);
+        this.timer = window.setInterval(() => {
+          analyser.getFloatTimeDomainData(samples);
+          const rms = Math.sqrt(samples.reduce((sum,x)=>sum+x*x,0)/samples.length);
+          if(ui?.micLevel)ui.micLevel.value = Math.min(1,rms*12);
+          const now = performance.now();
+          if(rms>0.008) { this.voiceMs += 100; this.lastVoice = now; }
+          if(this.voiceMs>=300 && now-this.lastVoice>1100) this.finishRecording();
+          else if(now-this.started>20000) {
+            if(this.voiceMs>=300)this.finishRecording(); else this.fail('no-speech');
+          }
+        },100);
+        this.onstart?.();
+      } catch(error) { if(!this.cancelled)this.fail(error.name==='NotAllowedError'?'not-allowed':'audio-capture'); }
+    }
+    releaseMic() {
+      window.clearInterval(this.timer);
+      this.stream?.getTracks().forEach(t=>t.stop());
+      this.context?.close().catch(()=>{});
+      if(ui?.micLevel)ui.micLevel.value = 0;
+    }
+    finishRecording() {
+      if(this.cancelled || this.ending || this.recorder?.state!=='recording')return;
+      this.ending = true;
+      window.clearInterval(this.timer);
+      this.ontranscribing?.();
+      this.recorder.stop();
+    }
+    async transcribe() {
+      this.releaseMic();
+      if(this.cancelled)return;
+      const blob = new Blob(this.chunks,{type:this.recorder.mimeType || 'audio/webm'});
+      const timeout = window.setTimeout(()=>this.controller.abort(),20000);
+      try {
+        const response = await fetch('/api/stt',{method:'POST',headers:{'Content-Type':blob.type},body:blob,signal:this.controller.signal});
+        if(!response.ok)throw Error('stt '+response.status);
+        const {text} = await response.json();
+        if(this.cancelled)return;
+        if(text?.trim())this.onresult?.({results:[[{transcript:text.trim()}]]});
+        else this.onerror?.({error:'no-speech'});
+        if(!this.cancelled)this.onend?.();
+      } catch(error) { if(!this.cancelled)this.fail('transcription'); }
+      finally { window.clearTimeout(timeout); }
+    }
+    fail(error) {
+      if(this.cancelled)return;
+      const end = this.onend;
+      this.onerror?.({error});
+      this.stop();
+      end?.();
+    }
+    stop() {
+      if(this.cancelled)return;
+      this.cancelled = true;
+      this.controller.abort();
+      if(this.recorder) {
+        this.recorder.onstop = null;
+        if(this.recorder.state==='recording')this.recorder.stop();
+      }
+      this.releaseMic();
+    }
+  }
+  const SpeechRecognition = window.MediaRecorder && window.navigator?.mediaDevices?.getUserMedia
+    ? RecordedSpeechRecognition : null;
   const DEBUG = new URLSearchParams(window.location.search).get("debug") === "1";
   const THINKING_MS = 20000;
   const HISTORY_MAX = 12;
@@ -39,6 +126,7 @@
     controller: null,
     listenTimer: 0,
     recoveryMessage: "",
+    micFailures: 0,
   };
 
   const debug = {
@@ -107,6 +195,9 @@
       ["إرسال"]
     );
     const form = el("form", { className: "voice-demo-form", id: "voice-demo-form" }, [input, send]);
+    const micLevel = el("meter", {min:"0",max:"1",value:"0","aria-label":"مستوى المايك",style:"width:100%"});
+    const voiceSend = el("button", {type:"button",className:"voice-demo-send",hidden:true}, ["أرسل كلامي"]);
+    voiceSend.addEventListener("click",()=>session.recognition?.finishRecording());
 
     const root = el(
       "aside",
@@ -123,6 +214,8 @@
           transcript,
           reply,
           btn,
+          micLevel,
+          voiceSend,
           form,
           el("p", { className: "voice-demo-note" }, [
             "تحدث أو اكتب، وسأرد عليك بالصوت والنص.",
@@ -144,7 +237,7 @@
     }
 
     document.body.appendChild(root);
-    return { root, btn, btnLabel, status, transcript, reply, form, input, send, debugPanel };
+    return { root, btn, btnLabel, status, transcript, reply, form, input, send, debugPanel, micLevel, voiceSend };
   }
 
   function renderDebug() {
@@ -175,6 +268,7 @@
       ui.root.classList.toggle("is-busy", session.busy);
       ui.root.classList.toggle("is-in-session", session.active);
       ui.send.disabled = session.busy;
+      if(ui.voiceSend)ui.voiceSend.hidden = session.state !== STATES.LISTENING;
     }
     setStatus(statusText || STATUS_AR[session.state] || session.state);
     renderDebug();
@@ -323,16 +417,21 @@
       setCallUi(true);
       setState(STATES.LISTENING, session.recoveryMessage);
     };
+    recognition.ontranscribing = () => {
+      if(session.recognition===recognition)setState(STATES.TRANSCRIBING);
+    };
     recognition.onerror = (e) => {
       const err = e.error || "unknown";
       if (!session.active || session.recognition !== recognition) return;
       if (err === "aborted" || err === "no-speech") {
         return;
       }
-      if (err === "not-allowed") {
+      if (err === "not-allowed" || err === "audio-capture" || ++session.micFailures >= 3) {
         stopRecognitionOnly();
-        pushError("mic not-allowed");
-        setState(STATES.LISTENING, "المايك محظور — استخدم الكتابة");
+        pushError("mic " + err);
+        setState(STATES.ERROR, err === "not-allowed"
+          ? "اسمح باستخدام المايك من إعدادات الموقع، ثم ابدأ المكالمة من جديد."
+          : "تعذر تسجيل أو تحويل صوتك. تقدر تكتب، أو تنهي المكالمة وتبدأ من جديد.");
         return;
       }
       pushError("stt:" + err);
@@ -347,6 +446,7 @@
       if (session.recognition !== recognition || session.busy || !session.active) return;
       const said = event.results[0][0].transcript.trim();
       if (!said) return;
+      session.micFailures = 0;
       runTurn(said, { fromStt: true });
     };
 
@@ -428,6 +528,7 @@
     session.history.length = 0;
     session.recoveryMessage = "";
     debug.transcript = "";
+    session.micFailures = 0;
     debug.llmJson = null;
     debug.latencyMs = null;
     debug.errors = [];
