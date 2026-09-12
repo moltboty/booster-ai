@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { onRequestPost as chat, calculate } from '../functions/api/chat.js';
 import { onRequestPost as tts } from '../functions/api/tts.js';
+import { onRequestPost as stt } from '../functions/api/stt.js';
 
 const pack = {reply_ar:'أكيد، نبدأ بفهم احتياجك.',intent:'other',lead_stage:'problem_clear',ask_next:'',cta:'none',confidence:0.9,safety_flags:[]};
 const request = body => new Request('https://test/api', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -64,6 +65,8 @@ function widget(fetchImpl, SpeechRecognition) {
   }
   const context=vm.createContext({window:{SpeechRecognition,location:{search:''},setTimeout:(f,ms)=>{timers.set(++timerId,{f,ms});return timerId;},clearTimeout:id=>timers.delete(id)},document:{addEventListener(){}},URLSearchParams,AbortController,performance,fetch:fetchImpl,Audio,URL:{createObjectURL:()=> 'blob:test',revokeObjectURL(){revoked++;}},console});
   let source=fs.readFileSync(new URL('../voice-demo.js',import.meta.url),'utf8');
+  // Isolate the conversation lifecycle from the microphone adapter in these tests.
+  source=source.replace(/const SpeechRecognition = window.MediaRecorder[\s\S]*?RecordedSpeechRecognition : null;/,'const SpeechRecognition = window.SpeechRecognition;');
   source=source.replace(/\}\)\(\);\s*$/, 'globalThis.api={session,runTurn,endSession,startSession,setUi(value){ui=value;}};})();');
   vm.runInContext(source,context);
   context.api.setUi(ui);
@@ -85,6 +88,21 @@ test('no-speech plus onend schedules one microphone restart; hangup cancels it',
   instances[1].onend();
   w.endSession();
   assert.equal(w.timers.size,0);
+});
+
+
+test('STT forwards recorded audio as Arabic transcription and rejects non-audio',async()=>{
+  let called=0;
+  const env={AI:{run:async(model,input)=>{
+    called++;assert.equal(model,'@cf/openai/whisper-large-v3-turbo');
+    assert.equal(input.language,'ar');assert.equal(input.task,'transcribe');
+    assert.equal(input.vad_filter,true);assert.equal(atob(input.audio).length,100);
+    return {text:'هلا والله'};
+  }}};
+  const response=await stt({env,request:new Request('https://test/api/stt',{method:'POST',headers:{'Content-Type':'audio/webm'},body:new Uint8Array(100)})});
+  assert.equal(response.status,200);assert.equal((await response.json()).text,'هلا والله');
+  assert.equal((await stt({env,request:request({text:'fake audio'})})).status,415);
+  assert.equal(called,1);
 });
 
 test('failed audio reopens microphone and accepts a subsequent spoken turn',async()=>{
