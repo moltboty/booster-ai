@@ -74,7 +74,7 @@
   let clipTexts = null;
   const decodedCache = new Map();
   const history = [];
-  const AUDIO_V = "fasee7lady4";
+  const AUDIO_V = "fasee7lady5";
 
   function setStatus(ui, text) {
     ui.status.textContent = text;
@@ -239,11 +239,17 @@
 
   function getClipById(id) {
     if (!id) return null;
+    // Temporary audio alias until dedicated clip is generated
+    const alias = {
+      wa_agent_pricing: "customer_service",
+      fallback_cta: "fallback_discovery",
+    };
+    const resolved = alias[id] || id;
     if (showcase && showcase.clips) {
-      const hit = showcase.clips.find((c) => c.id === id);
+      const hit = showcase.clips.find((c) => c.id === resolved);
       if (hit) return hit;
     }
-    return { id, audio: "assets/talk/" + id + ".wav" };
+    return { id: resolved, audio: "assets/talk/" + resolved + ".wav" };
   }
 
   async function playBuffer(buffer) {
@@ -285,7 +291,10 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || data.detail || "chat failed");
-    return (data.reply || "").toString().trim();
+    return {
+      reply: (data.reply || "").toString().trim(),
+      clip: (data.clip || "").toString().trim(),
+    };
   }
 
   function stopRecognitionOnly() {
@@ -311,49 +320,19 @@
     setStatus(ui, statusText || "انتهت المكالمة");
   }
 
-  async function speakBrowser(text) {
-    if (!("speechSynthesis" in window)) return;
-    const speakText = arabicOnly(text).slice(0, 280);
-    if (!speakText) return;
-    await new Promise((resolve) => {
-      const u = new SpeechSynthesisUtterance(speakText);
-      u.lang = "ar-SA";
-      let done = false;
-      const finish = () => {
-        if (done) return;
-        done = true;
-        resolve();
-      };
-      u.onend = finish;
-      u.onerror = finish;
-      window.setTimeout(finish, Math.min(12000, 1800 + speakText.length * 80));
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(u);
-    });
-  }
-
-  async function speakReply(ui, text) {
+  async function speakReply(ui, text, clipId) {
     setStatus(ui, "يتكلم…");
-    const clean = arabicOnly(text);
-    if (!clean) {
-      const fallback = getClipById("clarify") || getClipById("fallback_cta");
-      if (fallback) {
-        try {
-          await playShowcaseClip(fallback);
-          return clipArabicText(fallback.id) || clean;
-        } catch (_) {}
-      }
-      return "";
+    // Lady clips only — never browser TTS (causes English gibberish / silence)
+    let clip = null;
+    if (clipId) clip = getClipById(clipId);
+    if (!clip) {
+      const clean = arabicOnly(text) || text;
+      clip = matchClipByReply(clean);
     }
-    const byReply = matchClipByReply(clean);
-    if (byReply) {
-      try {
-        await playShowcaseClip(byReply);
-        return clipArabicText(byReply.id) || clean;
-      } catch (_) {}
-    }
-    await speakBrowser(clean);
-    return clean;
+    if (!clip) clip = getClipById("fallback_discovery") || getClipById("clarify");
+    if (!clip) throw new Error("no audio clip");
+    await playShowcaseClip(clip);
+    return clipArabicText(clip.id) || arabicOnly(text) || text || "تمام";
   }
 
   function armListen(ui) {
@@ -421,9 +400,9 @@
           history.push({ role: "assistant", content: ar });
         } else {
           setStatus(ui, "…");
-          let text = await askBrain(said);
-          text = arabicOnly(text) || text;
-          const spoken = await speakReply(ui, text);
+          const brain = await askBrain(said);
+          let text = arabicOnly(brain.reply) || brain.reply;
+          const spoken = await speakReply(ui, text, brain.clip);
           history.push({
             role: "assistant",
             content: spoken || arabicOnly(text) || "تمام",
