@@ -541,6 +541,11 @@
       "id": "fallback_discovery",
       "audio": "assets/talk/fallback_discovery.wav",
       "triggers": []
+    },
+    {
+      "id": "wa_agent_pricing",
+      "audio": "assets/talk/wa_agent_pricing.wav",
+      "triggers": []
     }
   ]
 }
