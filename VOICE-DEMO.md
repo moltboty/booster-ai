@@ -11,3 +11,5 @@ All twelve MP3 recordings are embedded in voice-demo.js. Runtime playback requir
 Validation: Node playback and language-switch tests; English speech transcription; browser playback and desktop/mobile layout checks. Speech transcription does not prove subjective accent or voice quality.
 
 Production remains unchanged until approval to publish there. The contact form delivery remains a separate existing configuration; this change does not enable form submission.
+
+English voice consistency: use the English welcome WAV and its exact transcript as the shared reference and continuation prompt for every other English answer. Do not independently regenerate answers using only the Arabic reference. The welcome recording is the fixed English voice anchor. Owner listening review is still required for perceived consistency.
