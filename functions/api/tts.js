@@ -57,34 +57,33 @@ export async function onRequestPost(context) {
   if (token) headers.Authorization = `Bearer ${token}`;
 
   let upstream;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 120000);
   try {
     upstream = await fetch(`${base}/tts`, {
+      signal: controller.signal,
       method: "POST",
       headers,
       body: form,
     });
-  } catch (e) {
-    return json(502, { error: "fasee7 unreachable", detail: String(e && e.message ? e.message : e) });
-  }
-
-  if (!upstream.ok) {
-    const detail = await upstream.text().catch(() => "");
-    return json(502, {
-      error: "fasee7 tts failed",
-      status: upstream.status,
-      detail: detail.slice(0, 500),
+    if (!upstream.ok) {
+      await upstream.body?.cancel();
+      return json(502, { error: "fasee7 tts failed", status: upstream.status });
+    }
+    const buf = await upstream.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    const ascii = (offset, size) => String.fromCharCode(...bytes.slice(offset, offset + size));
+    if (bytes.length < 44 || ascii(0, 4) !== "RIFF" || ascii(8, 4) !== "WAVE") {
+      return json(502, { error: "fasee7 returned invalid WAV audio" });
+    }
+    return new Response(buf, {
+      headers: { "Content-Type": "audio/wav", "Cache-Control": "no-store", "X-Talk-TTS": "fasee7-lady", ...CORS },
     });
+  } catch (e) {
+    return json(controller.signal.aborted ? 504 : 502, {
+      error: controller.signal.aborted ? "fasee7 timed out" : "fasee7 unreachable",
+    });
+  } finally {
+    clearTimeout(timer);
   }
-
-  const buf = await upstream.arrayBuffer();
-  const outType = upstream.headers.get("content-type") || "audio/wav";
-  return new Response(buf, {
-    status: 200,
-    headers: {
-      "Content-Type": outType,
-      "Cache-Control": "no-store",
-      "X-Talk-TTS": "fasee7-lady",
-      ...CORS,
-    },
-  });
 }
