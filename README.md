@@ -12,7 +12,7 @@ Run `python3 -m http.server 4185 --bind 127.0.0.1` and visit http://127.0.0.1:41
 - Calmer brand surfaces, fewer decorative elements, and clearer spacing.
 - Removed repeated vendor marquees; no implied vendor partnerships.
 - Improved keyboard focus, mobile language switching, Escape handling and anchor offsets.
-- Canonical and social sharing metadata for the existing GitHub Pages address.
+- Canonical and social sharing metadata point to https://boosterai.sa/.
 
 ## Contact
 
@@ -24,6 +24,6 @@ Contact delivery is deferred by the owner until domain setup. The existing form 
 
 ## Hosting
 
-Existing GitHub Pages deployment: https://moltboty.github.io/booster-ai/
+Production: https://boosterai.sa/ (Cloudflare Pages project `booster-ai`, deploys from `main`). www.boosterai.sa is also attached.
 
 This review does not change hosting providers or configure a custom domain. Publishing requires merging the reviewed changes into the deployed branch.
