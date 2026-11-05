@@ -43,7 +43,8 @@
       'contact.organization': 'اسم المؤسسة',
       'contact.phone': 'رقم الجوال',
       'contact.prepare': 'ابدأ الآن',
-      'contact.localOnly': 'النموذج غير متصل بوسيلة إرسال بعد.',
+      'contact.sending': 'جارٍ الإرسال...',
+      'contact.error': 'تعذر الإرسال الآن. حاول مرة أخرى أو راسلنا على info@boosterai.sa',
       'contact.successTitle': 'شكرا لتواصلك معنا.',
       'contact.successBody': 'سوف يتم التواصل معك في أقرب وقت.',
       'footer.tagline': 'نشخص. نبني. نعزز.',
@@ -104,7 +105,8 @@
       'contact.phone': 'Mobile number',
       'contact.organization': 'Organization name',
       'contact.prepare': 'Get started',
-      'contact.localOnly': 'This form is not connected to a delivery service yet.',
+      'contact.sending': 'Sending...',
+      'contact.error': 'We could not send this right now. Please try again or email info@boosterai.sa',
       'contact.successTitle': 'Thank you for contacting us.',
       'contact.successBody': 'We will contact you as soon as possible.',
       'footer.tagline': 'Diagnose. Build. Boost.',
@@ -224,10 +226,29 @@
     node.textContent = String(new Date().getFullYear());
   });
 
-  form?.addEventListener('submit', (event) => {
+  const formSuccess = document.querySelector('[data-contact-success]');
+  form?.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!form.reportValidity()) return;
-    if (formStatus) formStatus.textContent = text('contact.localOnly');
+    const button = form.querySelector('button[type="submit"]');
+    const data = Object.fromEntries(new FormData(form).entries());
+    data.language = document.documentElement.lang || 'ar';
+    if (button) button.disabled = true;
+    if (formStatus) formStatus.textContent = text('contact.sending');
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error('send failed');
+      form.hidden = true;
+      if (formSuccess) formSuccess.hidden = false;
+      if (formStatus) formStatus.textContent = '';
+    } catch (_) {
+      if (formStatus) formStatus.textContent = text('contact.error');
+      if (button) button.disabled = false;
+    }
   });
 
   let savedLanguage = 'ar';
