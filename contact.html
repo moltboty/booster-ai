@@ -40,25 +40,26 @@
 <p data-i18n="contact.noJsBody">يرجى تفعيل JavaScript لاستخدام النموذج.</p>
 </div>
 </noscript>
-<p class="contact-pending" data-i18n="contact.localOnly" role="note">النموذج غير متصل بوسيلة إرسال بعد.</p><form class="contact-form" data-contact-form="" method="dialog">
+<form class="contact-form" data-contact-form="" method="dialog">
+<div aria-hidden="true" class="form-trap"><label>Website<input autocomplete="off" name="website" tabindex="-1" type="text"/></label></div>
 <div class="form-row">
 <label><span class="field-label"><span data-i18n="contact.fullName">الاسم الأول والأخير</span> <span aria-hidden="true">*</span></span>
-<input disabled="" autocomplete="name" name="name" required="" type="text"/>
+<input autocomplete="name" name="name" required="" type="text"/>
 </label>
 <label><span class="field-label"><span data-i18n="contact.email">البريد الإلكتروني للعمل</span> <span aria-hidden="true">*</span></span>
-<input disabled="" autocomplete="email" name="email" required="" type="email"/>
+<input autocomplete="email" name="email" required="" type="email"/>
 </label>
 </div>
 <div class="form-row">
 <label><span class="field-label"><span data-i18n="contact.phone">رقم الجوال</span> <span aria-hidden="true">*</span></span>
-<input disabled="" autocomplete="tel" name="phone" required="" type="tel"/>
+<input autocomplete="tel" name="phone" required="" type="tel"/>
 </label>
 <label><span class="field-label"><span data-i18n="contact.organization">اسم المؤسسة</span> <span aria-hidden="true">*</span></span>
-<input disabled="" autocomplete="organization" name="organization" required="" type="text"/>
+<input autocomplete="organization" name="organization" required="" type="text"/>
 </label>
 </div>
 <div class="form-action">
-<button class="button button-mint" disabled="" type="submit"><span data-i18n="contact.prepare">ابدأ الآن</span></button>
+<button class="button button-mint" type="submit"><span data-i18n="contact.prepare">ابدأ الآن</span></button>
 </div>
 <p aria-live="polite" class="form-status" data-contact-status=""></p>
 </form>

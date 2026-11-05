@@ -16,7 +16,9 @@ Run `python3 -m http.server 4185 --bind 127.0.0.1` and visit http://127.0.0.1:41
 
 ## Contact
 
-Contact delivery is deferred by the owner until domain setup. The existing form is retained with an upfront unavailable notice and disabled submit button. It sends no data. Do not enable it or show success until a verified contact route is connected and tested.
+The contact form posts to `functions/api/contact.js`. Each lead goes to the Booster Sales Telegram bot and, when SMTP secrets are set, by email to info@boosterai.sa (Purelymail SMTP). The visitor sees success only if at least one channel delivered.
+
+Cloudflare Pages secrets: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `SMTP_USER`, `SMTP_PASS` (optional `SMTP_HOST`, `SMTP_PORT`, `CONTACT_TO`). A hidden `website` field traps bots.
 
 ## Video
 
